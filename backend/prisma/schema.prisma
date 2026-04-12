@@ -1,13 +1,80 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String?
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+
+  resumes      Resume[]
+  applications Application[]
+  motivations  MotivationLetter[]
+}
+
+model Resume {
+  id          String       @id @default(uuid())
+  userId      String
+  fileUrl     String
+  content     String?
+  atsScore    Float?
+  uploadedAt  DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id])
+  analyses    ATSAnalysis[]
+}
+
+model Job {
+  id          String       @id @default(uuid())
+  title       String
+  company     String
+  description String
+  location    String?
+  source      String?
+
+  applications Application[]
+  motivations  MotivationLetter[]
+  analyses     ATSAnalysis[]
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  status    String   @default("applied")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id])
+  job       Job      @relation(fields: [jobId], references: [id])
+}
+
+model MotivationLetter {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  content   String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  job       Job      @relation(fields: [jobId], references: [id])
+}
+
+model ATSAnalysis {
+  id        String   @id @default(uuid())
+  resumeId  String
+  jobId     String
+  score     Float
+  feedback  String
+  createdAt DateTime @default(now())
+
+  resume    Resume   @relation(fields: [resumeId], references: [id])
+  job       Job      @relation(fields: [jobId], references: [id])
 }
