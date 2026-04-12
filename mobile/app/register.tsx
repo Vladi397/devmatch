@@ -14,6 +14,7 @@ import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { AuthInput } from "@/components/AuthInput";
+import { useAuth } from "@/hooks/useAuth";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 
 function validate(email: string, password: string, repeat: string) {
@@ -28,19 +29,17 @@ function validate(email: string, password: string, repeat: string) {
 }
 
 export default function RegisterScreen() {
+  const { register, loading, error } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; repeat?: string }>({});
-  const [loading, setLoading] = useState(false);
 
   function handleRegister() {
     const errs = validate(email, password, repeat);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
     setFieldErrors({});
-    setLoading(true);
-    // TODO: wire to backend
-    setTimeout(() => setLoading(false), 1200);
+    register(email, password);
   }
 
   return (
@@ -60,8 +59,8 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sign in to use AI Job Hunter</Text>
-            <Text style={styles.cardSubtitle}>Optimize your job hunt</Text>
+            <Text style={styles.cardTitle}>Create your account</Text>
+            <Text style={styles.cardSubtitle}>Start optimizing your job hunt</Text>
 
             <AuthInput
               icon="mail-outline"
@@ -98,6 +97,13 @@ export default function RegisterScreen() {
               }}
               error={fieldErrors.repeat}
             />
+
+            {error ? (
+              <View style={styles.apiError}>
+                <Ionicons name="alert-circle-outline" size={15} color={Colors.danger} />
+                <Text style={styles.apiErrorText}>{error}</Text>
+              </View>
+            ) : null}
 
             <TouchableOpacity
               style={[styles.btnPrimary, loading && { opacity: 0.7 }]}
@@ -155,6 +161,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary, textAlign: "center", marginBottom: 4 },
   cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
+  apiError: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#2A0F16", borderRadius: Radius.sm, padding: 10, marginBottom: Spacing.md,
+  },
+  apiErrorText: { color: Colors.danger, fontSize: 12, flex: 1 },
   btnPrimary: {
     backgroundColor: Colors.blue, borderRadius: Radius.full,
     paddingVertical: 15, alignItems: "center", marginBottom: Spacing.xl, marginTop: Spacing.sm,
