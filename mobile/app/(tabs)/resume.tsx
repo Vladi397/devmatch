@@ -5,11 +5,11 @@ import * as FileSystem from 'expo-file-system';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
-const API_URL = Platform.OS === "web" 
-  ? "http://localhost:3000" 
+const API_URL = Platform.OS === "web"
+  ? "http://localhost:3000"
   : "http://192.168.178.214:3000";
 
-export default function DashboardScreen() {
+export default function ResumeScreen() {
   const { getToken } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
@@ -18,18 +18,17 @@ export default function DashboardScreen() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
-        copyToCacheDirectory: true, 
+        copyToCacheDirectory: true,
       });
 
       if (result.canceled) return;
-      
+
       setIsUploading(true);
       setUploadStatus("Preparing file...");
       const file = result.assets[0];
 
       const formData = new FormData();
 
-      // Handle file differently depending on Web vs Mobile
       if (Platform.OS === 'web') {
         if (file.file) {
           formData.append('resume', file.file);
@@ -56,7 +55,7 @@ export default function DashboardScreen() {
 
       setUploadStatus("Sending to server...");
       const token = await getToken();
-      
+
       const response = await fetch(`${API_URL}/resume/upload`, {
         method: 'POST',
         headers: {
@@ -84,9 +83,9 @@ export default function DashboardScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Your Master Resume</Text>
-      
-      <TouchableOpacity 
-        style={[styles.button, isUploading && styles.buttonDisabled]} 
+
+      <TouchableOpacity
+        style={[styles.button, isUploading && styles.buttonDisabled]}
         onPress={handleResumeUpload}
         disabled={isUploading}
       >
