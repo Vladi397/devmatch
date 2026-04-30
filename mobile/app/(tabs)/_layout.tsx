@@ -35,14 +35,7 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="resume"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name="document-text-outline" focused={focused} label="RESUME" />
-          ),
-        }}
-      />
+      <Tabs.Screen name="resume" options={{ href: null }} />
       <Tabs.Screen
         name="jobs"
         options={{
