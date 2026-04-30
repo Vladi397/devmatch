@@ -15,24 +15,56 @@ const API_URL = Platform.OS === 'web'
 
 type StoredResume = {
   id: string;
-  fileUrl: string;   // stores the original filename
+  fileUrl: string;
   content: string;
   uploadedAt: string;
 };
 
+type ScanResult = {
+  score: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  keywords: string[];
+};
+
+function ScoreRing({ score }: { score: number }) {
+  const color = score >= 75 ? Colors.success : score >= 50 ? Colors.cyan : Colors.danger;
+  const label = score >= 75 ? 'ATS Ready' : score >= 50 ? 'Needs Work' : 'Needs Attention';
+  return (
+    <View style={styles.scoreRingWrap}>
+      <View style={[styles.scoreRing, { borderColor: color }]}>
+        <Text style={[styles.scoreNumber, { color }]}>{score}</Text>
+        <Text style={styles.scoreOutOf}>/ 100</Text>
+      </View>
+      <Text style={[styles.scoreGrade, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+function Chip({ label, color, bg }: { label: string; color: string; bg: string }) {
+  return (
+    <View style={[styles.chip, { backgroundColor: bg }]}>
+      <Text style={[styles.chipText, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
 export default function ResumeScreen() {
   const { getToken } = useAuth();
 
-  const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-
+  const [isUploading, setIsUploading] = useState(false);
   const [storedResume, setStoredResume] = useState<StoredResume | null>(null);
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null); // web only
-
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Keep blob URL alive for the session
+  const [scanning, setScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+
   const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -54,30 +86,49 @@ export default function ResumeScreen() {
         setStoredResume(data.resume);
       }
     } catch {
-      // no resume yet, that's fine
+      // no resume yet
     } finally {
       setIsLoading(false);
     }
   }
 
+  async function scanResume() {
+    try {
+      setScanning(true);
+      setScanError(null);
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/ats/scan`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.message || 'Scan failed.');
+      setScanResult(data.analysis);
+    } catch (err: any) {
+      setScanError(err.message ?? 'Something went wrong.');
+    } finally {
+      setScanning(false);
+    }
+  }
+
   async function handleResumeUpload() {
     try {
-      setError(null);
+      setUploadError(null);
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/pdf',
         copyToCacheDirectory: true,
       });
-
       if (result.canceled) return;
 
       setIsUploading(true);
+      setScanResult(null);
+      setScanError(null);
       const file = result.assets[0];
       const formData = new FormData();
 
       if (Platform.OS === 'web') {
         if (!file.file) throw new Error('Could not read file.');
         formData.append('resume', file.file);
-        // Create a blob URL for in-session PDF preview
         if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
         const url = URL.createObjectURL(file.file);
         blobUrlRef.current = url;
@@ -99,13 +150,15 @@ export default function ResumeScreen() {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         body: formData,
       });
-
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Upload failed.');
 
       setStoredResume(data.resume);
+
+      // Auto-scan after successful upload
+      await scanResume();
     } catch (err: any) {
-      setError(err.message ?? 'Something went wrong.');
+      setUploadError(err.message ?? 'Something went wrong.');
     } finally {
       setIsUploading(false);
     }
@@ -144,52 +197,157 @@ export default function ResumeScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MASTER RESUME</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {storedResume ? (
-          // ── Resume exists card ──
-          <View style={styles.resumeCard}>
-            <View style={styles.resumeCardTop}>
-              <View style={styles.fileIconBox}>
-                <Ionicons name="document-text" size={28} color={Colors.blue} />
+          <>
+            {/* Resume card */}
+            <View style={styles.resumeCard}>
+              <View style={styles.resumeCardTop}>
+                <View style={styles.fileIconBox}>
+                  <Ionicons name="document-text" size={28} color={Colors.blue} />
+                </View>
+                <View style={styles.fileInfo}>
+                  <Text style={styles.fileName} numberOfLines={1}>{storedResume.fileUrl}</Text>
+                  <Text style={styles.fileDate}>Uploaded {formatDate(storedResume.uploadedAt)}</Text>
+                </View>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusBadgeText}>ACTIVE</Text>
+                </View>
               </View>
-              <View style={styles.fileInfo}>
-                <Text style={styles.fileName} numberOfLines={1}>{storedResume.fileUrl}</Text>
-                <Text style={styles.fileDate}>Uploaded {formatDate(storedResume.uploadedAt)}</Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>ACTIVE</Text>
+              <View style={styles.divider} />
+              <View style={styles.cardActions}>
+                <TouchableOpacity style={styles.previewBtn} onPress={() => setShowPreview(true)}>
+                  <Ionicons name="eye-outline" size={16} color="#fff" />
+                  <Text style={styles.previewBtnText}>Preview</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.reuploadBtn} onPress={handleResumeUpload} disabled={isUploading || scanning}>
+                  {isUploading
+                    ? <ActivityIndicator size="small" color={Colors.blue} />
+                    : <>
+                        <Ionicons name="cloud-upload-outline" size={16} color={Colors.blue} />
+                        <Text style={styles.reuploadBtnText}>Re-upload</Text>
+                      </>
+                  }
+                </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.divider} />
+            {uploadError && <Text style={styles.errorText}>{uploadError}</Text>}
 
-            <View style={styles.cardActions}>
-              <TouchableOpacity style={styles.previewBtn} onPress={() => setShowPreview(true)}>
-                <Ionicons name="eye-outline" size={16} color="#fff" />
-                <Text style={styles.previewBtnText}>Preview</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.reuploadBtn} onPress={handleResumeUpload} disabled={isUploading}>
-                {isUploading
-                  ? <ActivityIndicator size="small" color={Colors.blue} />
-                  : <>
-                      <Ionicons name="cloud-upload-outline" size={16} color={Colors.blue} />
-                      <Text style={styles.reuploadBtnText}>Re-upload</Text>
-                    </>
-                }
-              </TouchableOpacity>
+            {/* ATS Scan section */}
+            <View style={styles.sectionDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerLabel}>ATS SCORE</Text>
+              <View style={styles.dividerLine} />
             </View>
-          </View>
+
+            {scanning && (
+              <View style={styles.scanningCard}>
+                <ActivityIndicator color={Colors.blue} />
+                <Text style={styles.scanningText}>Scanning your resume...</Text>
+              </View>
+            )}
+
+            {!scanResult && !scanning && (
+              <TouchableOpacity style={styles.scanBtn} onPress={scanResume}>
+                <Ionicons name="analytics-outline" size={18} color="#fff" />
+                <Text style={styles.scanBtnText}>Scan My Resume</Text>
+              </TouchableOpacity>
+            )}
+
+            {scanError && (
+              <View style={styles.errorCard}>
+                <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+                <Text style={styles.errorCardText}>{scanError}</Text>
+              </View>
+            )}
+
+            {scanResult && (
+              <>
+                <ScoreRing score={scanResult.score} />
+
+                <View style={styles.resultCard}>
+                  <Text style={styles.resultCardTitle}>Summary</Text>
+                  <Text style={styles.bodyText}>{scanResult.summary}</Text>
+                </View>
+
+                {scanResult.strengths?.length > 0 && (
+                  <View style={styles.resultCard}>
+                    <View style={styles.titleRow}>
+                      <Ionicons name="checkmark-circle" size={15} color={Colors.success} />
+                      <Text style={styles.resultCardTitle}>Strengths</Text>
+                    </View>
+                    {scanResult.strengths.map((s, i) => (
+                      <View key={i} style={styles.bulletRow}>
+                        <Text style={[styles.bullet, { color: Colors.success }]}>•</Text>
+                        <Text style={styles.bodyText}>{s}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {scanResult.weaknesses?.length > 0 && (
+                  <View style={styles.resultCard}>
+                    <View style={styles.titleRow}>
+                      <Ionicons name="close-circle" size={15} color={Colors.danger} />
+                      <Text style={styles.resultCardTitle}>Weaknesses</Text>
+                    </View>
+                    {scanResult.weaknesses.map((w, i) => (
+                      <View key={i} style={styles.bulletRow}>
+                        <Text style={[styles.bullet, { color: Colors.danger }]}>•</Text>
+                        <Text style={styles.bodyText}>{w}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {scanResult.suggestions?.length > 0 && (
+                  <View style={styles.resultCard}>
+                    <View style={styles.titleRow}>
+                      <Ionicons name="bulb-outline" size={15} color={Colors.cyan} />
+                      <Text style={styles.resultCardTitle}>Suggestions</Text>
+                    </View>
+                    {scanResult.suggestions.map((s, i) => (
+                      <View key={i} style={styles.bulletRow}>
+                        <Text style={[styles.bullet, { color: Colors.cyan }]}>•</Text>
+                        <Text style={styles.bodyText}>{s}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {scanResult.keywords?.length > 0 && (
+                  <View style={styles.resultCard}>
+                    <View style={styles.titleRow}>
+                      <Ionicons name="pricetag-outline" size={15} color={Colors.blue} />
+                      <Text style={styles.resultCardTitle}>Detected Keywords</Text>
+                    </View>
+                    <View style={styles.chipRow}>
+                      {scanResult.keywords.map((k) => (
+                        <Chip key={k} label={k} color={Colors.blue} bg={Colors.blue + '22'} />
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                <TouchableOpacity style={styles.rescanBtn} onPress={scanResume}>
+                  <Ionicons name="refresh-outline" size={15} color={Colors.textSecondary} />
+                  <Text style={styles.rescanBtnText}>Re-scan</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </>
         ) : (
-          // ── No resume yet ──
           <View style={styles.emptyCard}>
             <Ionicons name="document-text-outline" size={48} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>No Resume Yet</Text>
-            <Text style={styles.emptySubtitle}>Upload your PDF resume to get started with ATS analysis and job matching.</Text>
+            <Text style={styles.emptySubtitle}>
+              Upload your PDF and we'll instantly scan it for ATS compatibility.
+            </Text>
             <TouchableOpacity style={styles.uploadBtn} onPress={handleResumeUpload} disabled={isUploading}>
               {isUploading
                 ? <ActivityIndicator color="#fff" />
@@ -199,13 +357,12 @@ export default function ResumeScreen() {
                   </>
               }
             </TouchableOpacity>
+            {uploadError && <Text style={styles.errorText}>{uploadError}</Text>}
           </View>
         )}
-
-        {error && <Text style={styles.errorText}>{error}</Text>}
       </ScrollView>
 
-      {/* ── Preview Modal ── */}
+      {/* Preview Modal */}
       <Modal visible={showPreview} animationType="slide" onRequestClose={() => setShowPreview(false)}>
         <View style={styles.modalRoot}>
           <View style={styles.modalHeader}>
@@ -222,22 +379,13 @@ export default function ResumeScreen() {
               </TouchableOpacity>
             </View>
           </View>
-
           <View style={styles.modalBody}>
             {Platform.OS === 'web' && previewBlobUrl ? (
-              // Full PDF iframe — exactly like your screenshot
               // @ts-ignore
-              <iframe
-                src={previewBlobUrl}
-                style={{ width: '100%', height: '100%', border: 'none', borderRadius: 8 }}
-                title="Resume Preview"
-              />
+              <iframe src={previewBlobUrl} style={{ width: '100%', height: '100%', border: 'none' }} title="Resume Preview" />
             ) : (
-              // Mobile / no blob URL fallback: extracted text
               <ScrollView style={styles.textScroll} contentContainerStyle={{ padding: Spacing.xl }}>
-                <Text style={styles.extractedText}>
-                  {storedResume?.content ?? 'No content available.'}
-                </Text>
+                <Text style={styles.extractedText}>{storedResume?.content ?? 'No content available.'}</Text>
               </ScrollView>
             )}
           </View>
@@ -250,165 +398,130 @@ export default function ResumeScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg },
+  header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, letterSpacing: 2 },
+  scroll: { padding: Spacing.xl, paddingBottom: 48 },
 
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 54,
-    paddingBottom: Spacing.lg,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.textPrimary,
-    letterSpacing: 2,
-  },
-
-  scroll: {
-    flexGrow: 1,
-    padding: Spacing.xl,
-  },
-
-  // ── Resume card ──
   resumeCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: 'hidden',
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, overflow: 'hidden', marginBottom: Spacing.xl,
   },
-  resumeCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
+  resumeCardTop: { flexDirection: 'row', alignItems: 'center', padding: Spacing.lg, gap: Spacing.md },
   fileIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.blue + '18',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 48, height: 48, borderRadius: Radius.md,
+    backgroundColor: Colors.blue + '18', alignItems: 'center', justifyContent: 'center',
   },
   fileInfo: { flex: 1 },
   fileName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   fileDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.blue + '22',
-  },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.sm, backgroundColor: Colors.blue + '22' },
   statusBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.blue, letterSpacing: 0.5 },
   divider: { height: 1, backgroundColor: Colors.border },
-  cardActions: {
-    flexDirection: 'row',
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
+  cardActions: { flexDirection: 'row', padding: Spacing.lg, gap: Spacing.md },
   previewBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.blue,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 11, borderRadius: Radius.md, backgroundColor: Colors.blue,
   },
   previewBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   reuploadBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.blue,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 11, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.blue,
   },
   reuploadBtnText: { color: Colors.blue, fontWeight: '700', fontSize: 14 },
 
-  // ── Empty state ──
+  sectionDivider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.lg },
+  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  dividerLabel: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1.5 },
+
+  scanningCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: Spacing.md, padding: Spacing.xl,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.lg,
+  },
+  scanningText: { color: Colors.textSecondary, fontSize: 14 },
+
+  scanBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 14, borderRadius: Radius.md,
+    backgroundColor: Colors.blue, marginBottom: Spacing.lg,
+  },
+  scanBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  errorCard: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
+    backgroundColor: Colors.danger + '18', borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.danger + '44',
+    padding: Spacing.lg, marginBottom: Spacing.lg,
+  },
+  errorCardText: { color: Colors.danger, fontSize: 13, flex: 1 },
+  errorText: { color: Colors.danger, fontSize: 13, textAlign: 'center', marginTop: Spacing.sm },
+
+  scoreRingWrap: { alignItems: 'center', paddingVertical: Spacing.xl },
+  scoreRing: {
+    width: 130, height: 130, borderRadius: 65, borderWidth: 7,
+    alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md,
+  },
+  scoreNumber: { fontSize: 40, fontWeight: '800' },
+  scoreOutOf: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
+  scoreGrade: { fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+
+  resultCard: {
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  resultCardTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 0.3 },
+  bodyText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+  bulletRow: { flexDirection: 'row', gap: 8 },
+  bullet: { fontSize: 14, fontWeight: '800', marginTop: 1 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
+  chipText: { fontSize: 12, fontWeight: '600' },
+
+  rescanBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 12, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.lg,
+  },
+  rescanBtnText: { color: Colors.textSecondary, fontSize: 13, fontWeight: '600' },
+
   emptyCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xxxl,
-    alignItems: 'center',
-    gap: Spacing.md,
-    marginTop: 60,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: Spacing.xxxl, alignItems: 'center', gap: Spacing.md, marginTop: 60,
   },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  emptySubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  emptySubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   uploadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: Spacing.md,
-    paddingVertical: 13,
-    paddingHorizontal: 28,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.blue,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: Spacing.md, paddingVertical: 13, paddingHorizontal: 28,
+    borderRadius: Radius.full, backgroundColor: Colors.blue,
   },
   uploadBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  errorText: {
-    marginTop: Spacing.lg,
-    color: Colors.danger,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-
-  // ── Preview Modal ──
   modalRoot: { flex: 1, backgroundColor: Colors.bg },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 54,
-    paddingBottom: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.bgCard,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg,
+    borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.bgCard,
   },
   modalTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   modalActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   downloadBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.blue,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
   },
   downloadBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 34, height: 34, borderRadius: Radius.sm,
+    borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center',
   },
   modalBody: { flex: 1 },
-
-  // Mobile text fallback
   textScroll: { flex: 1, backgroundColor: Colors.bg },
   extractedText: {
-    color: Colors.textPrimary,
-    fontSize: 13,
-    lineHeight: 22,
+    color: Colors.textPrimary, fontSize: 13, lineHeight: 22,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });

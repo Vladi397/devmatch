@@ -44,6 +44,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="ats" options={{ href: null }} />
       <Tabs.Screen
         name="applications"
         options={{

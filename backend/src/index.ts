@@ -2,7 +2,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth";
-import resumeRoutes from "./routes/resume"; // <-- 1. Import the resume routes
+import resumeRoutes from "./routes/resume";
+import atsRoutes from "./routes/ats"; // <-- 1. Import the resume routes
 
 dotenv.config();
 
@@ -11,7 +12,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/auth", authRoutes);
-app.use("/resume", resumeRoutes); // <-- 2. Tell Express to use the resume routes
+app.use("/resume", resumeRoutes);
+app.use("/ats", atsRoutes); // <-- 2. Tell Express to use the resume routes
 
 app.get("/health", (_, res) => res.json({ status: "ok" }));
 
