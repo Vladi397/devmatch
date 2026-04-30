@@ -1,7 +1,7 @@
-// mobile/app/(tabs)/index.tsx (or dashboard.tsx)
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { useAuth } from '@/hooks/useAuth';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 
@@ -16,33 +16,52 @@ export default function DashboardScreen() {
 
   const handleResumeUpload = async () => {
     try {
-      // 1. Open the phone's file picker (restricted to PDFs)
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: true,
+        type: '*/*',
+        copyToCacheDirectory: true, 
       });
 
       if (result.canceled) return;
       
       setIsUploading(true);
-      setUploadStatus("Extracting text...");
+      setUploadStatus("Preparing file...");
       const file = result.assets[0];
 
-      // 2. Prepare the file for upload
       const formData = new FormData();
-      formData.append('resume', {
-        uri: Platform.OS === 'ios' ? file.uri.replace('file://', '') : file.uri,
-        name: file.name,
-        type: file.mimeType || 'application/pdf',
-      } as any);
 
-      // 3. Send to backend
+      // Handle file differently depending on Web vs Mobile
+      if (Platform.OS === 'web') {
+        if (file.file) {
+          formData.append('resume', file.file);
+        } else {
+          throw new Error("Web file extraction failed.");
+        }
+      } else {
+        let finalUri = file.uri;
+        if (Platform.OS === 'android' && file.uri.startsWith('content://')) {
+          const fileInfo = await FileSystem.getInfoAsync(file.uri);
+          if (fileInfo.exists) {
+             finalUri = fileInfo.uri;
+          }
+        } else if (Platform.OS === 'ios') {
+          finalUri = file.uri.replace('file://', '');
+        }
+
+        formData.append('resume', {
+          uri: finalUri,
+          name: file.name || 'resume.pdf',
+          type: file.mimeType || 'application/pdf',
+        } as any);
+      }
+
+      setUploadStatus("Sending to server...");
       const token = await getToken();
+      
       const response = await fetch(`${API_URL}/resume/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          // Do NOT set Content-Type manually. Fetch will automatically set the correct boundary for multipart/form-data.
+          'Accept': 'application/json',
         },
         body: formData,
       });
@@ -50,12 +69,12 @@ export default function DashboardScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Upload failed');
+        throw new Error(data.message || 'Upload failed on server');
       }
 
       setUploadStatus("Resume saved successfully!");
     } catch (error: any) {
-      console.error(error);
+      console.error("Upload Error Details:", error);
       setUploadStatus(`Error: ${error.message}`);
     } finally {
       setIsUploading(false);
@@ -118,5 +137,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     color: Colors.textSecondary,
     fontSize: 14,
+    textAlign: 'center',
   }
 });
