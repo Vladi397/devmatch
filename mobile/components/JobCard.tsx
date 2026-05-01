@@ -1,7 +1,25 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+
+const LOGO_DEV_TOKEN = "pk_AR5bsdAtQQ6NVIvvzPLQ8Q";
+
+// Known TLDs that might appear in company names (e.g. "lemon.io", "a.team")
+const KNOWN_TLDS = /\.(io|ai|co|app|dev|team|tech|xyz|net|org|gg|so|me)(\s|$)/i;
+const NOISE = /\b(ltd|limited|inc|corp|group|gmbh|bv|nv|plc|se|ag|sa|recruitment|staffing|consulting|solutions|services|technologies|technology|digital|global|uk|europe|international)\b/gi;
+
+function guessDomain(company: string): string {
+  const first = company.split(/[-–,\(]/)[0].trim();
+  // If it already contains a known TLD, use it as a domain directly
+  if (KNOWN_TLDS.test(first)) return first.replace(/\s/g, "").toLowerCase();
+  const clean = first.replace(NOISE, "").replace(/[^a-z0-9]/gi, "").toLowerCase().trim();
+  return clean + ".com";
+}
+
+function logoUrl(company: string): string {
+  return `https://img.logo.dev/${guessDomain(company)}?token=${LOGO_DEV_TOKEN}&retina=true`;
+}
 
 export interface Job {
   id: string;
@@ -33,6 +51,28 @@ function initials(name: string): string {
   return name.split(/\s+/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
 }
 
+function CompanyAvatar({ company }: { company: string }) {
+  const [failed, setFailed] = useState(false);
+  const color = avatarColor(company);
+
+  if (!failed) {
+    return (
+      <Image
+        source={{ uri: logoUrl(company) }}
+        style={[styles.avatar, styles.avatarLogo]}
+        onError={() => setFailed(true)}
+        resizeMode="contain"
+      />
+    );
+  }
+
+  return (
+    <View style={[styles.avatar, { backgroundColor: color + "22", borderColor: color + "55", borderWidth: 1 }]}>
+      <Text style={[styles.avatarText, { color }]}>{initials(company)}</Text>
+    </View>
+  );
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
@@ -52,14 +92,11 @@ function openJob(url: string) {
 }
 
 export function JobCard({ job, onSave }: JobCardProps) {
-  const color = avatarColor(job.company);
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={[styles.avatar, { backgroundColor: color + "22", borderColor: color + "55" }]}>
-          <Text style={[styles.avatarText, { color }]}>{initials(job.company)}</Text>
-        </View>
+        <CompanyAvatar company={job.company} />
 
         <View style={styles.headerInfo}>
           <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
@@ -139,6 +176,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
+  avatarLogo: { backgroundColor: "#ffffff", padding: 4, borderColor: Colors.border },
   avatarText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
   headerInfo: { flex: 1 },
   title: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary, marginBottom: 2, lineHeight: 19 },
