@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 
 export interface Job {
@@ -7,69 +8,108 @@ export interface Job {
   title: string;
   company: string;
   location: string;
-  matchPct: number;
+  remote: boolean;
+  salary?: string;
+  url: string;
+  postedAt: string;
+  source: "adzuna" | "remotive";
   tags: string[];
-  companyInitials: string;
-  companyColor: string;
 }
 
 interface JobCardProps {
   job: Job;
-  onView?: () => void;
   onSave?: () => void;
 }
 
-function MatchBadge({ pct }: { pct: number }) {
-  const color = pct >= 80 ? Colors.pink : pct >= 60 ? Colors.warning : Colors.textMuted;
-  return (
-    <View style={[styles.badge, { borderColor: color }]}>
-      <Text style={[styles.badgeText, { color }]}>{pct}% match</Text>
-    </View>
-  );
+const AVATAR_COLORS = ["#2D6EF5", "#00C97A", "#FF6B6B", "#F59E0B", "#8B5CF6", "#06B6D4", "#EC4899"];
+
+function avatarColor(name: string): string {
+  let hash = 0;
+  for (const c of name) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-function CompanyAvatar({ initials, color }: { initials: string; color: string }) {
-  return (
-    <View style={[styles.avatar, { backgroundColor: color + "22", borderColor: color + "55" }]}>
-      <Text style={[styles.avatarText, { color }]}>{initials}</Text>
-    </View>
-  );
+function initials(name: string): string {
+  return name.split(/\s+/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase() || "?";
 }
 
-function TechChip({ label }: { label: string }) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipText}>{label}</Text>
-    </View>
-  );
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
 }
 
-export function JobCard({ job, onView, onSave }: JobCardProps) {
+function openJob(url: string) {
+  if (Platform.OS === "web") {
+    window.open(url, "_blank", "noopener");
+  } else {
+    Linking.openURL(url);
+  }
+}
+
+export function JobCard({ job, onSave }: JobCardProps) {
+  const color = avatarColor(job.company);
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <CompanyAvatar initials={job.companyInitials} color={job.companyColor} />
-        <View style={styles.headerInfo}>
-          <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
-          <Text style={styles.meta}>{job.company}</Text>
-          <Text style={styles.meta}>{job.location}</Text>
+        <View style={[styles.avatar, { backgroundColor: color + "22", borderColor: color + "55" }]}>
+          <Text style={[styles.avatarText, { color }]}>{initials(job.company)}</Text>
         </View>
-        <MatchBadge pct={job.matchPct} />
+
+        <View style={styles.headerInfo}>
+          <Text style={styles.title} numberOfLines={2}>{job.title}</Text>
+          <Text style={styles.company}>{job.company}</Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="location-outline" size={11} color={Colors.textMuted} />
+            <Text style={styles.metaText}>{job.location}</Text>
+            {job.remote && (
+              <View style={styles.remoteBadge}>
+                <Text style={styles.remoteBadgeText}>REMOTE</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <Text style={styles.timeAgo}>{timeAgo(job.postedAt)}</Text>
       </View>
 
-      <View style={styles.chips}>
-        {job.tags.map((t) => (
-          <TechChip key={t} label={t} />
-        ))}
-      </View>
+      {(job.salary || job.tags.length > 0) && (
+        <View style={styles.middle}>
+          {job.salary && (
+            <View style={styles.salaryRow}>
+              <Ionicons name="cash-outline" size={12} color={Colors.success} />
+              <Text style={styles.salary}>{job.salary}</Text>
+            </View>
+          )}
+          {job.tags.length > 0 && (
+            <View style={styles.chips}>
+              {job.tags.map((t) => (
+                <View key={t} style={styles.chip}>
+                  <Text style={styles.chipText}>{t}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.btnView} onPress={onView} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.btnView} onPress={() => openJob(job.url)} activeOpacity={0.8}>
+          <Ionicons name="open-outline" size={14} color="#fff" />
           <Text style={styles.btnViewText}>View Job</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnSave} onPress={onSave} activeOpacity={0.8}>
-          <Text style={styles.btnSaveText}>Save Job</Text>
+          <Ionicons name="bookmark-outline" size={14} color={Colors.textSecondary} />
+          <Text style={styles.btnSaveText}>Save</Text>
         </TouchableOpacity>
+        <View style={styles.sourceBadge}>
+          <Text style={styles.sourceText}>{job.source === "adzuna" ? "Adzuna" : "Remotive"}</Text>
+        </View>
       </View>
     </View>
   );
@@ -91,47 +131,28 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   avatar: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: Radius.sm,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
-  avatarText: {
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
+  avatarText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
   headerInfo: { flex: 1 },
-  title: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.textPrimary,
-    marginBottom: 2,
-  },
-  meta: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 17,
-  },
-  badge: {
-    borderWidth: 1,
-    borderRadius: Radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  chips: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: Spacing.md,
-  },
+  title: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary, marginBottom: 2, lineHeight: 19 },
+  company: { fontSize: 12, color: Colors.textSecondary, marginBottom: 3 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" },
+  metaText: { fontSize: 11, color: Colors.textMuted },
+  remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
+  remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
+  timeAgo: { fontSize: 10, color: Colors.textMuted, flexShrink: 0 },
+
+  middle: { gap: Spacing.sm, marginBottom: Spacing.md },
+  salaryRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   chip: {
     backgroundColor: Colors.bgChip,
     borderRadius: Radius.full,
@@ -140,39 +161,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  chipText: {
-    fontSize: 11,
-    color: Colors.cyan,
-    fontWeight: "500",
-  },
-  actions: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-  },
+  chipText: { fontSize: 11, color: Colors.cyan, fontWeight: "500" },
+
+  actions: { flexDirection: "row", gap: Spacing.sm, alignItems: "center" },
   btnView: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
     backgroundColor: Colors.blue,
     borderRadius: Radius.md,
     paddingVertical: 10,
-    alignItems: "center",
   },
-  btnViewText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  btnViewText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   btnSave: {
-    flex: 1,
-    backgroundColor: "transparent",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingVertical: 10,
-    alignItems: "center",
   },
-  btnSaveText: {
-    color: Colors.textSecondary,
-    fontSize: 13,
-    fontWeight: "600",
+  btnSaveText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
+  sourceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    backgroundColor: Colors.border,
   },
+  sourceText: { fontSize: 9, fontWeight: "700", color: Colors.textMuted, letterSpacing: 0.3 },
 });
