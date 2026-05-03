@@ -12,10 +12,8 @@ import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { JobCard, type Job } from "@/components/JobCard";
 import { useAuth } from "@/hooks/useAuth";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { API_URL } from "@/constants/api";
 
-const API_URL = Platform.OS === "web"
-  ? "http://localhost:3000"
-  : "http://192.168.0.3:3000";
 
 const ROLES: { label: string; query: string }[] = [
   { label: "Frontend", query: "frontend developer" },

@@ -2,13 +2,10 @@ import { useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { Platform } from "react-native";
+import { API_URL } from "@/constants/api";
 
 const TOKEN_KEY = "auth_token";
 const USER_KEY = "auth_user";
-
-const API_URL = Platform.OS === "web" 
-  ? "http://localhost:3000" 
-  : "http://192.168.178.214:3000";
 
 async function saveItem(key: string, value: string) {
   if (Platform.OS === "web") {

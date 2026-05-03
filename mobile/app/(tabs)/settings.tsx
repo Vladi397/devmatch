@@ -19,10 +19,8 @@ import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useAuth } from "@/hooks/useAuth";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { API_URL } from "@/constants/api";
 
-const API_URL = Platform.OS === "web"
-  ? "http://localhost:3000"
-  : "http://192.168.0.3:3000";
 
 const NOTIF_KEY = "notif_prefs";
 

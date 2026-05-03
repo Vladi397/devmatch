@@ -12,10 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { Colors, Radius, Spacing } from "@/constants/theme";
+import { API_URL } from "@/constants/api";
 
-const API_URL = Platform.OS === "web"
-  ? "http://localhost:3000"
-  : "http://192.168.0.3:3000";
 
 type AppStatus = "pending" | "applied" | "interview" | "rejected";
 
