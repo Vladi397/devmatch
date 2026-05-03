@@ -108,7 +108,7 @@ router.patch("/:id/status", protect, async (req: AuthRequest | any, res: Respons
   }
 });
 
-// Delete (unsave)
+// Delete by internal id
 router.delete("/:id", protect, async (req: AuthRequest | any, res: Response) => {
   try {
     await prisma.application.deleteMany({
@@ -118,6 +118,18 @@ router.delete("/:id", protect, async (req: AuthRequest | any, res: Response) => 
   } catch (error: any) {
     console.error("Delete application error:", error);
     res.status(500).json({ message: "Failed to delete application", detail: error?.message });
+  }
+});
+
+// Delete by externalId (used from Jobs tab to unsave)
+router.delete("/external/:externalId", protect, async (req: AuthRequest | any, res: Response) => {
+  try {
+    await prisma.application.deleteMany({
+      where: { externalId: req.params.externalId, userId: req.userId },
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ message: "Failed to unsave job", detail: error?.message });
   }
 });
 

@@ -39,6 +39,7 @@ interface JobCardProps {
   job: Job;
   saved?: boolean;
   onSave?: () => void;
+  onUnsave?: () => void;
 }
 
 const AVATAR_COLORS = ["#2D6EF5", "#00C97A", "#FF6B6B", "#F59E0B", "#8B5CF6", "#06B6D4", "#EC4899"];
@@ -93,7 +94,7 @@ function openJob(url: string) {
   }
 }
 
-export function JobCard({ job, saved = false, onSave }: JobCardProps) {
+export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) {
 
   return (
     <View style={styles.card}>
@@ -144,11 +145,17 @@ export function JobCard({ job, saved = false, onSave }: JobCardProps) {
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.btnSave, saved && styles.btnSaved]}
-          onPress={onSave}
+          onPress={saved ? onUnsave : onSave}
           activeOpacity={0.8}
         >
-          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={14} color={saved ? Colors.blue : Colors.textSecondary} />
-          <Text style={[styles.btnSaveText, saved && { color: Colors.blue }]}>{saved ? "Saved" : "Save"}</Text>
+          <Ionicons
+            name={saved ? "bookmark" : "bookmark-outline"}
+            size={14}
+            color={saved ? Colors.blue : Colors.textSecondary}
+          />
+          <Text style={[styles.btnSaveText, saved && { color: Colors.blue }]}>
+            {saved ? "Saved" : "Save"}
+          </Text>
         </TouchableOpacity>
         <View style={styles.sourceBadge}>
           <Text style={styles.sourceText}>{job.source === "adzuna" ? "Adzuna" : "Remotive"}</Text>

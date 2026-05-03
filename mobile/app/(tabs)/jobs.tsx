@@ -66,11 +66,11 @@ function JobsLoader() {
 }
 
 // ─── Animated job card wrapper ───
-function AnimatedJobCard({ job, index, saved, onSave }: { job: Job; index: number; saved: boolean; onSave: () => void }) {
+function AnimatedJobCard({ job, index, saved, onSave, onUnsave }: { job: Job; index: number; saved: boolean; onSave: () => void; onUnsave: () => void }) {
   const stagger = Math.min(index * 60, 360);
   return (
     <Animated.View entering={FadeInDown.delay(stagger).duration(350).springify()}>
-      <JobCard job={job} saved={saved} onSave={onSave} />
+      <JobCard job={job} saved={saved} onSave={onSave} onUnsave={onUnsave} />
     </Animated.View>
   );
 }
@@ -169,6 +169,17 @@ export default function JobsScreen() {
         }),
       });
       setSavedIds((prev) => new Set([...prev, job.id]));
+    } catch {}
+  }
+
+  async function handleUnsave(job: Job) {
+    try {
+      const token = await getToken();
+      await fetch(`${API_URL}/applications/external/${job.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSavedIds((prev) => { const next = new Set(prev); next.delete(job.id); return next; });
     } catch {}
   }
 
@@ -278,6 +289,7 @@ export default function JobsScreen() {
                   index={i}
                   saved={savedIds.has(job.id)}
                   onSave={() => handleSave(job)}
+                  onUnsave={() => handleUnsave(job)}
                 />
               ))}
 
