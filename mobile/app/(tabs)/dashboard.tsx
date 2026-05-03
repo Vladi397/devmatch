@@ -15,7 +15,7 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 
 const API_URL = Platform.OS === "web"
   ? "http://localhost:3000"
-  : "http://192.168.178.214:3000";
+  : "http://192.168.0.3:3000";
 
 async function loadItem(key: string): Promise<string | null> {
   if (Platform.OS === "web") return localStorage.getItem(key);

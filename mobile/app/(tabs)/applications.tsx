@@ -15,7 +15,7 @@ import { Colors, Radius, Spacing } from "@/constants/theme";
 
 const API_URL = Platform.OS === "web"
   ? "http://localhost:3000"
-  : "http://192.168.178.214:3000";
+  : "http://192.168.0.3:3000";
 
 type AppStatus = "pending" | "applied" | "interview" | "rejected";
 
@@ -204,6 +204,7 @@ export default function ApplicationsScreen() {
   const [letterApp, setLetterApp] = useState<Application | null>(null);
   const [jobDesc, setJobDesc] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [letter, setLetter] = useState<string | null>(null);
   const [letterError, setLetterError] = useState<string | null>(null);
@@ -273,9 +274,7 @@ export default function ApplicationsScreen() {
   function openLetterModal(app: Application) {
     setLetterApp(app);
     setJobDesc(""); setLetter(null); setLetterError(null); setCopied(false);
-    setShowManualInput(!app.description);
-    // Auto-generate if we have a stored description
-    if (app.description) handleGenerateLetter(app);
+    setShowManualInput(false); setDescExpanded(false);
   }
 
   async function handleDelete(id: string) {
@@ -358,56 +357,110 @@ export default function ApplicationsScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }}>
-            {generating ? (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} nestedScrollEnabled>
+
+            {/* ── Generating spinner ── */}
+            {generating && (
               <Animated.View entering={FadeInDown.duration(300)} style={styles.generatingWrap}>
                 <ActivityIndicator color={Colors.cyan} size="large" />
                 <Text style={styles.generatingText}>Writing your cover letter…</Text>
                 <Text style={styles.generatingSubText}>Powered by Gemini AI</Text>
               </Animated.View>
-            ) : !letter ? (
-              <>
-                {letterError && (
-                  <View style={styles.errorCard}>
-                    <Ionicons name="alert-circle-outline" size={15} color={Colors.danger} />
-                    <Text style={styles.errorText}>{letterError}</Text>
-                  </View>
-                )}
+            )}
 
-                {showManualInput ? (
-                  <Animated.View entering={FadeInDown.duration(300)} style={{ gap: Spacing.md }}>
-                    <Text style={styles.inputLabel}>Paste the job description</Text>
-                    <TextInput
-                      style={styles.textArea}
-                      multiline
-                      numberOfLines={8}
-                      placeholder="Paste the full job description here for a tailored letter..."
-                      placeholderTextColor={Colors.textMuted}
-                      value={jobDesc}
-                      onChangeText={setJobDesc}
-                      textAlignVertical="top"
-                    />
-                    <TouchableOpacity
-                      style={[styles.generateBtn, (!jobDesc.trim()) && { opacity: 0.5 }]}
-                      onPress={() => letterApp && handleGenerateLetter(letterApp, jobDesc)}
-                      disabled={!jobDesc.trim()}
-                    >
-                      <Ionicons name="sparkles" size={16} color="#fff" />
-                      <Text style={styles.generateBtnText}>Generate Cover Letter</Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ) : (
-                  <Animated.View entering={FadeInDown.duration(300)} style={styles.noDescWrap}>
-                    <Ionicons name="document-text-outline" size={36} color={Colors.textMuted} />
-                    <Text style={styles.noDescTitle}>No description saved</Text>
-                    <Text style={styles.noDescText}>This job was saved without a description. Paste it below to generate your letter.</Text>
-                    <TouchableOpacity style={styles.pasteBtn} onPress={() => setShowManualInput(true)}>
-                      <Text style={styles.pasteBtnText}>Paste Job Description</Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-              </>
-            ) : (
+            {/* ── Error banner ── */}
+            {!generating && letterError && (
+              <Animated.View entering={FadeInDown.duration(300)} style={styles.errorCard}>
+                <Ionicons name="alert-circle-outline" size={15} color={Colors.danger} />
+                <Text style={styles.errorText}>{letterError}</Text>
+              </Animated.View>
+            )}
+
+            {/* ── Pre-generate: description preview + button ── */}
+            {!generating && !letter && !showManualInput && (
+              letterApp?.description ? (
+                <Animated.View entering={FadeInDown.duration(350)} style={{ gap: Spacing.lg }}>
+                  <View>
+                    <Text style={styles.inputLabel}>Job Description</Text>
+                    {descExpanded ? (
+                      <View style={styles.descPreviewBox}>
+                        <Text key="desc-expanded" style={styles.descPreviewText}>
+                          {letterApp.description}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.expandBtn}
+                          onPress={() => setDescExpanded(false)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.expandBtnText}>See less</Text>
+                          <Ionicons name="chevron-up" size={13} color={Colors.blue} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.descPreviewBox}>
+                        <Text key="desc-collapsed" style={styles.descPreviewText} numberOfLines={6}>
+                          {letterApp.description}
+                        </Text>
+                        {letterApp.description.length > 300 && (
+                          <TouchableOpacity
+                            style={styles.expandBtn}
+                            onPress={() => setDescExpanded(true)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.expandBtnText}>See more</Text>
+                            <Ionicons name="chevron-down" size={13} color={Colors.blue} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.generateBtn}
+                    onPress={() => handleGenerateLetter(letterApp)}
+                  >
+                    <Ionicons name="sparkles" size={16} color="#fff" />
+                    <Text style={styles.generateBtnText}>Generate Cover Letter</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              ) : (
+                <Animated.View entering={FadeInDown.duration(300)} style={styles.noDescWrap}>
+                  <Ionicons name="document-text-outline" size={36} color={Colors.textMuted} />
+                  <Text style={styles.noDescTitle}>No description available</Text>
+                  <Text style={styles.noDescText}>This job was saved before descriptions were fetched. Re-save it from the Jobs tab, or paste it manually below.</Text>
+                  <TouchableOpacity style={styles.pasteBtn} onPress={() => setShowManualInput(true)}>
+                    <Text style={styles.pasteBtnText}>Paste Manually</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              )
+            )}
+
+            {/* ── Manual paste fallback ── */}
+            {!generating && !letter && showManualInput && (
+              <Animated.View entering={FadeInDown.duration(300)} style={{ gap: Spacing.md }}>
+                <Text style={styles.inputLabel}>Paste the job description</Text>
+                <TextInput
+                  style={styles.textArea}
+                  multiline
+                  numberOfLines={8}
+                  placeholder="Paste the full job description here..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={jobDesc}
+                  onChangeText={setJobDesc}
+                  textAlignVertical="top"
+                />
+                <TouchableOpacity
+                  style={[styles.generateBtn, !jobDesc.trim() && { opacity: 0.5 }]}
+                  onPress={() => letterApp && handleGenerateLetter(letterApp, jobDesc)}
+                  disabled={!jobDesc.trim()}
+                >
+                  <Ionicons name="sparkles" size={16} color="#fff" />
+                  <Text style={styles.generateBtnText}>Generate Cover Letter</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
+            {/* ── Generated letter ── */}
+            {!generating && !!letter && (
               <>
                 <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.letterBanner}>
                   <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
@@ -425,13 +478,14 @@ export default function ApplicationsScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.regenerateBtn}
-                    onPress={() => { setLetter(null); if (letterApp?.description) handleGenerateLetter(letterApp); }}
+                    onPress={() => { setLetter(null); setLetterError(null); }}
                   >
                     <Text style={styles.regenerateBtnText}>Regenerate</Text>
                   </TouchableOpacity>
                 </Animated.View>
               </>
             )}
+
           </ScrollView>
         </View>
       </Modal>
@@ -551,6 +605,18 @@ const styles = StyleSheet.create({
   generatingWrap: { alignItems: "center", gap: Spacing.lg, paddingTop: 60 },
   generatingText: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
   generatingSubText: { fontSize: 12, color: Colors.textMuted },
+
+  descPreviewBox: {
+    backgroundColor: Colors.bgCard, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: Spacing.lg, marginTop: Spacing.sm, gap: Spacing.md,
+  },
+  descPreviewText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+  expandBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    alignSelf: "flex-start", paddingVertical: 4,
+  },
+  expandBtnText: { fontSize: 12, fontWeight: "700", color: Colors.blue },
 
   noDescWrap: { alignItems: "center", gap: Spacing.md, paddingTop: 40 },
   noDescTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
