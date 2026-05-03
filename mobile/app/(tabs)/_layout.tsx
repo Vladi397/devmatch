@@ -13,8 +13,8 @@ type TabIconProps = {
 function TabIcon({ name, focused, label }: TabIconProps) {
   return (
     <View style={styles.tabItem}>
-      <Ionicons name={name} size={22} color={focused ? Colors.blue : Colors.textMuted} />
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>{label}</Text>
+      <Ionicons name={name} size={20} color={focused ? Colors.blue : Colors.textMuted} />
+      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -82,10 +82,10 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tabLabel: {
-    fontSize: 9,
+    fontSize: 7.5,
     fontWeight: "600",
     color: Colors.textMuted,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   tabLabelActive: {
     color: Colors.blue,
