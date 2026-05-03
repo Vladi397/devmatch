@@ -25,7 +25,12 @@ export type NormalizedJob = {
   postedAt: string;
   source: "adzuna" | "remotive";
   tags: string[];
+  description?: string;
 };
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
+}
 
 const VALID_COUNTRIES = ["gb", "de", "nl", "fr", "be", "at", "it", "pl"];
 
@@ -60,6 +65,7 @@ async function fetchAdzuna(query: string, country: string, page: number): Promis
     postedAt: job.created,
     source: "adzuna" as const,
     tags: job.category?.label ? [job.category.label] : [],
+    description: job.description ? stripHtml(job.description) : undefined,
   }));
 }
 
@@ -83,6 +89,7 @@ async function fetchRemotive(query: string): Promise<NormalizedJob[]> {
     postedAt: job.publication_date,
     source: "remotive" as const,
     tags: (job.tags || []).slice(0, 4),
+    description: job.description ? stripHtml(job.description) : undefined,
   }));
 }
 

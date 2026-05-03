@@ -5,6 +5,8 @@ import authRoutes from "./routes/auth";
 import resumeRoutes from "./routes/resume";
 import atsRoutes from "./routes/ats";
 import jobsRoutes from "./routes/jobs";
+import applicationsRoutes from "./routes/applications";
+import motivationRoutes from "./routes/motivation";
 
 dotenv.config();
 
@@ -16,6 +18,8 @@ app.use("/auth", authRoutes);
 app.use("/resume", resumeRoutes);
 app.use("/ats", atsRoutes);
 app.use("/jobs", jobsRoutes);
+app.use("/applications", applicationsRoutes);
+app.use("/motivation", motivationRoutes);
 
 app.get("/health", (_, res) => res.json({ status: "ok" }));
 

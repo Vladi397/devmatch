@@ -32,10 +32,12 @@ export interface Job {
   postedAt: string;
   source: "adzuna" | "remotive";
   tags: string[];
+  description?: string;
 }
 
 interface JobCardProps {
   job: Job;
+  saved?: boolean;
   onSave?: () => void;
 }
 
@@ -91,7 +93,7 @@ function openJob(url: string) {
   }
 }
 
-export function JobCard({ job, onSave }: JobCardProps) {
+export function JobCard({ job, saved = false, onSave }: JobCardProps) {
 
   return (
     <View style={styles.card}>
@@ -140,9 +142,13 @@ export function JobCard({ job, onSave }: JobCardProps) {
           <Ionicons name="open-outline" size={14} color="#fff" />
           <Text style={styles.btnViewText}>View Job</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnSave} onPress={onSave} activeOpacity={0.8}>
-          <Ionicons name="bookmark-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.btnSaveText}>Save</Text>
+        <TouchableOpacity
+          style={[styles.btnSave, saved && styles.btnSaved]}
+          onPress={onSave}
+          activeOpacity={0.8}
+        >
+          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={14} color={saved ? Colors.blue : Colors.textSecondary} />
+          <Text style={[styles.btnSaveText, saved && { color: Colors.blue }]}>{saved ? "Saved" : "Save"}</Text>
         </TouchableOpacity>
         <View style={styles.sourceBadge}>
           <Text style={styles.sourceText}>{job.source === "adzuna" ? "Adzuna" : "Remotive"}</Text>
@@ -224,6 +230,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  btnSaved: { borderColor: Colors.blue, backgroundColor: Colors.blue + "12" },
   btnSaveText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
   sourceBadge: {
     paddingHorizontal: 8,

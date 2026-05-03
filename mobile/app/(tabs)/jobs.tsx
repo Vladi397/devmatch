@@ -68,11 +68,11 @@ function JobsLoader() {
 }
 
 // ─── Animated job card wrapper ───
-function AnimatedJobCard({ job, index }: { job: Job; index: number }) {
+function AnimatedJobCard({ job, index, saved, onSave }: { job: Job; index: number; saved: boolean; onSave: () => void }) {
   const stagger = Math.min(index * 60, 360);
   return (
     <Animated.View entering={FadeInDown.delay(stagger).duration(350).springify()}>
-      <JobCard job={job} />
+      <JobCard job={job} saved={saved} onSave={onSave} />
     </Animated.View>
   );
 }
@@ -107,6 +107,7 @@ export default function JobsScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const fetchJobs = useCallback(async (role: number, country: number, nextPage: number, append = false) => {
     try {
@@ -135,6 +136,43 @@ export default function JobsScreen() {
   useEffect(() => {
     fetchJobs(selectedRole, selectedCountry, 1, false);
   }, [selectedRole, selectedCountry]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${API_URL}/applications/ids`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setSavedIds(new Set(data.ids));
+        }
+      } catch {}
+    })();
+  }, []);
+
+  async function handleSave(job: Job) {
+    try {
+      const token = await getToken();
+      await fetch(`${API_URL}/applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          externalId: job.id,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          remote: job.remote,
+          salary: job.salary,
+          url: job.url,
+          source: job.source,
+          tags: job.tags,
+          postedAt: job.postedAt,
+          description: job.description,
+        }),
+      });
+      setSavedIds((prev) => new Set([...prev, job.id]));
+    } catch {}
+  }
 
   function handleRoleChange(i: number) {
     if (i === selectedRole) return;
@@ -236,7 +274,13 @@ export default function JobsScreen() {
           ) : (
             <>
               {jobs.map((job, i) => (
-                <AnimatedJobCard key={job.id} job={job} index={i} />
+                <AnimatedJobCard
+                  key={job.id}
+                  job={job}
+                  index={i}
+                  saved={savedIds.has(job.id)}
+                  onSave={() => handleSave(job)}
+                />
               ))}
 
               {hasMore && (
