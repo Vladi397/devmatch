@@ -6,34 +6,52 @@ import { Colors } from "@/constants/theme";
 
 type TabIconProps = {
   name: keyof typeof Ionicons.glyphMap;
+  focusedName: keyof typeof Ionicons.glyphMap;
   focused: boolean;
   label: string;
 };
 
-function TabIcon({ name, focused, label }: TabIconProps) {
+function TabIcon({ name, focusedName, focused, label }: TabIconProps) {
   return (
     <View style={styles.tabItem}>
-      <Ionicons name={name} size={20} color={focused ? Colors.blue : Colors.textMuted} />
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]} numberOfLines={1}>{label}</Text>
+      <Ionicons
+        name={focused ? focusedName : name}
+        size={24}
+        color={focused ? Colors.blue : Colors.textMuted}
+      />
+      <Text
+        style={[styles.tabLabel, focused && styles.tabLabelActive]}
+        numberOfLines={1}
+        allowFontScaling={false}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarStyle: [styles.tabBar, { height: 64 + insets.bottom, paddingBottom: 8 + insets.bottom }],
         tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: Colors.bgCard,
+          borderTopColor: Colors.border,
+          borderTopWidth: 1,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+        },
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="home" focused={focused} label="HOME" />
+            <TabIcon name="home-outline" focusedName="home" focused={focused} label="Home" />
           ),
         }}
       />
@@ -42,7 +60,7 @@ export default function TabsLayout() {
         name="jobs"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="briefcase-outline" focused={focused} label="JOBS" />
+            <TabIcon name="briefcase-outline" focusedName="briefcase" focused={focused} label="Jobs" />
           ),
         }}
       />
@@ -51,7 +69,7 @@ export default function TabsLayout() {
         name="applications"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="mail-outline" focused={focused} label="APPLICATIONS" />
+            <TabIcon name="layers-outline" focusedName="layers" focused={focused} label="Tracker" />
           ),
         }}
       />
@@ -59,7 +77,7 @@ export default function TabsLayout() {
         name="settings"
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon name="settings-outline" focused={focused} label="SETTINGS" />
+            <TabIcon name="person-outline" focusedName="person" focused={focused} label="Profile" />
           ),
         }}
       />
@@ -68,26 +86,19 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: Colors.bgCard,
-    borderTopColor: Colors.border,
-    borderTopWidth: 1,
-    height: 64,
-    paddingBottom: 8,
-    paddingTop: 4,
-  },
   tabItem: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 4,
+    paddingTop: 6,
   },
   tabLabel: {
-    fontSize: 7.5,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "500",
     color: Colors.textMuted,
-    letterSpacing: 0.3,
   },
   tabLabelActive: {
     color: Colors.blue,
+    fontWeight: "700",
   },
 });

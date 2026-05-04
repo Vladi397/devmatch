@@ -7,10 +7,12 @@ import Animated, {
   FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle,
   withSpring, withDelay, withRepeat, withSequence, withTiming, Easing,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { JobCard, type Job } from "@/components/JobCard";
 import { useAuth } from "@/hooks/useAuth";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
 
@@ -84,6 +86,7 @@ function RoleChip({ label, active, onPress }: { label: string; active: boolean; 
       <TouchableOpacity
         style={[styles.roleChip, active && styles.roleChipActive]}
         onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           scale.value = withSequence(withSpring(0.9), withSpring(1));
           onPress();
         }}
@@ -97,6 +100,7 @@ function RoleChip({ label, active, onPress }: { label: string; active: boolean; 
 
 export default function JobsScreen() {
   const { getToken } = useAuth();
+  const insets = useSafeAreaInsets();
   const [selectedRole, setSelectedRole] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(0);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -185,6 +189,7 @@ export default function JobsScreen() {
 
   function handleRoleChange(i: number) {
     if (i === selectedRole) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedRole(i);
     setJobs([]);
     setPage(1);
@@ -193,6 +198,7 @@ export default function JobsScreen() {
 
   function handleCountryChange(i: number) {
     if (i === selectedCountry) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedCountry(i);
     setJobs([]);
     setPage(1);

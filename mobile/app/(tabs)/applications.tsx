@@ -8,9 +8,11 @@ import Animated, {
   FadeInDown, FadeInUp, ZoomIn,
   useSharedValue, useAnimatedStyle, withSpring, withSequence,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { useAuth } from "@/hooks/useAuth";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
 
@@ -162,30 +164,35 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter }: {
           </View>
         )}
 
-        {/* Actions row */}
-        <View style={styles.cardActions}>
-          <TouchableOpacity style={styles.letterBtn} onPress={() => onGenerateLetter(app)} activeOpacity={0.8}>
-            <Ionicons name="create-outline" size={13} color={Colors.cyan} />
-            <Text style={styles.letterBtnText}>Cover Letter</Text>
-          </TouchableOpacity>
+        {/* Cover Letter — full-width */}
+        <TouchableOpacity
+          style={styles.letterBtnFull}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onGenerateLetter(app);
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="sparkles-outline" size={14} color={Colors.cyan} />
+          <Text style={styles.letterBtnFullText}>Generate Cover Letter</Text>
+        </TouchableOpacity>
 
-          {Platform.OS === "web" && (
-            <>
-              {STATUS_OPTIONS.filter((s) => s.key !== app.status).map((s) => (
-                <TouchableOpacity
-                  key={s.key}
-                  style={[styles.webActionBtn, { borderColor: s.color + "55" }]}
-                  onPress={() => onStatusChange(app.id, s.key)}
-                >
-                  <Text style={[styles.webActionText, { color: s.color }]}>{s.label}</Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.webDeleteBtn} onPress={() => onDelete(app.id)}>
-                <Ionicons name="trash-outline" size={13} color={Colors.danger} />
+        {Platform.OS === "web" && (
+          <View style={styles.cardActions}>
+            {STATUS_OPTIONS.filter((s) => s.key !== app.status).map((s) => (
+              <TouchableOpacity
+                key={s.key}
+                style={[styles.webActionBtn, { borderColor: s.color + "55" }]}
+                onPress={() => onStatusChange(app.id, s.key)}
+              >
+                <Text style={[styles.webActionText, { color: s.color }]}>{s.label}</Text>
               </TouchableOpacity>
-            </>
-          )}
-        </View>
+            ))}
+            <TouchableOpacity style={styles.webDeleteBtn} onPress={() => onDelete(app.id)}>
+              <Ionicons name="trash-outline" size={13} color={Colors.danger} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </Animated.View>
   );
@@ -193,6 +200,7 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter }: {
 
 export default function ApplicationsScreen() {
   const { getToken } = useAuth();
+  const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState<AppStatus | "all">("all");
   const [applications, setApplications] = useState<Application[]>([]);
   const [counts, setCounts] = useState<Counts>({ all: 0, pending: 0, applied: 0, interview: 0, rejected: 0 });
@@ -546,14 +554,14 @@ const styles = StyleSheet.create({
   salaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
 
-  cardActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: 2, alignItems: "center" },
-  letterBtn: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.cyan + "55",
-    backgroundColor: Colors.cyan + "12",
+  letterBtnFull: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 7, paddingVertical: 11, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.cyan + "44",
+    backgroundColor: Colors.cyan + "10", marginTop: Spacing.xs,
   },
-  letterBtnText: { fontSize: 11, fontWeight: "600", color: Colors.cyan },
+  letterBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.cyan },
+  cardActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: Spacing.xs, alignItems: "center" },
   webActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: 2 },
   webActionBtn: {
     paddingHorizontal: 10, paddingVertical: 5,

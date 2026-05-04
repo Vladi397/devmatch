@@ -1,13 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, ActivityIndicator, StatusBar, Platform,
 } from "react-native";
+import Animated, {
+  FadeInDown, ZoomIn, useSharedValue, useAnimatedProps, withTiming, Easing,
+} from "react-native-reanimated";
+import Svg, { Circle } from "react-native-svg";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
-
 
 type Analysis = {
   score: number;
@@ -17,40 +22,85 @@ type Analysis = {
   suggestions: string[];
 };
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const RADIUS = 52;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
 function ScoreRing({ score }: { score: number }) {
   const color = score >= 75 ? Colors.success : score >= 50 ? Colors.cyan : Colors.danger;
+  const label = score >= 75 ? "Strong Match" : score >= 50 ? "Moderate Match" : "Weak Match";
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withTiming(score / 100, {
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [score]);
+
+  const animProps = useAnimatedProps(() => ({
+    strokeDashoffset: CIRCUMFERENCE * (1 - progress.value),
+  }));
+
   return (
-    <View style={styles.scoreRingWrap}>
-      <View style={[styles.scoreRing, { borderColor: color }]}>
-        <Text style={[styles.scoreNumber, { color }]}>{score}</Text>
-        <Text style={styles.scoreLabel}>/ 100</Text>
+    <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.scoreRingWrap}>
+      <View style={styles.scoreRingContainer}>
+        <Svg width={130} height={130} style={styles.scoreSvg}>
+          {/* Track ring */}
+          <Circle
+            cx={65} cy={65} r={RADIUS}
+            stroke={Colors.border}
+            strokeWidth={8}
+            fill="none"
+          />
+          {/* Progress ring */}
+          <AnimatedCircle
+            cx={65} cy={65} r={RADIUS}
+            stroke={color}
+            strokeWidth={8}
+            fill="none"
+            strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+            animatedProps={animProps}
+            strokeLinecap="round"
+            transform="rotate(-90, 65, 65)"
+          />
+        </Svg>
+        <View style={styles.scoreCenter}>
+          <Text style={[styles.scoreNumber, { color }]}>{score}</Text>
+          <Text style={styles.scoreLabel}>/ 100</Text>
+        </View>
       </View>
-      <Text style={[styles.scoreGrade, { color }]}>
-        {score >= 75 ? "Strong Match" : score >= 50 ? "Moderate Match" : "Weak Match"}
-      </Text>
-    </View>
+      <Text style={[styles.scoreGrade, { color }]}>{label}</Text>
+    </Animated.View>
   );
 }
 
-function KeywordChip({ label, type }: { label: string; type: "match" | "miss" }) {
+function KeywordChip({ label, type, index }: { label: string; type: "match" | "miss"; index: number }) {
   const bg = type === "match" ? Colors.success + "22" : Colors.danger + "22";
   const fg = type === "match" ? Colors.success : Colors.danger;
+  const icon = type === "match" ? "checkmark" : "close";
   return (
-    <View style={[styles.chip, { backgroundColor: bg }]}>
-      <Text style={[styles.chipText, { color: fg }]}>{label}</Text>
-    </View>
+    <Animated.View entering={ZoomIn.delay(index * 40).duration(300).springify()}>
+      <View style={[styles.chip, { backgroundColor: bg }]}>
+        <Ionicons name={icon as any} size={10} color={fg} />
+        <Text style={[styles.chipText, { color: fg }]}>{label}</Text>
+      </View>
+    </Animated.View>
   );
 }
 
 export default function ATSScreen() {
   const { getToken } = useAuth();
+  const insets = useSafeAreaInsets();
   const [jobDescription, setJobDescription] = useState("");
+  const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleAnalyze() {
     if (!jobDescription.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       setLoading(true);
       setError(null);
@@ -75,35 +125,46 @@ export default function ATSScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>ATS SCANNER</Text>
-      </View>
+      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+        <Text style={styles.headerTitle}>ATS Scanner</Text>
+        <Text style={styles.headerSub}>Check how well your resume matches a job</Text>
+      </Animated.View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {/* Input card */}
-        <View style={styles.inputCard}>
-          <Text style={styles.inputLabel}>Paste Job Description</Text>
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.inputCard}>
+          <View style={styles.inputLabelRow}>
+            <Ionicons name="document-text-outline" size={15} color={Colors.cyan} />
+            <Text style={styles.inputLabel}>Paste Job Description</Text>
+          </View>
           <TextInput
-            style={styles.textArea}
+            style={[styles.textArea, focused && styles.textAreaFocused]}
             multiline
             numberOfLines={8}
-            placeholder="Paste the full job description here..."
+            placeholder="Paste the full job description here to see how well your resume matches..."
             placeholderTextColor={Colors.textMuted}
             value={jobDescription}
             onChangeText={setJobDescription}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             textAlignVertical="top"
           />
           <TouchableOpacity
             style={[styles.analyzeBtn, (!jobDescription.trim() || loading) && styles.analyzeBtnDisabled]}
             onPress={handleAnalyze}
             disabled={!jobDescription.trim() || loading}
+            activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <View style={styles.analyzingRow}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.analyzeBtnText}>Analyzing…</Text>
+              </View>
             ) : (
               <>
                 <Ionicons name="analytics-outline" size={18} color="#fff" />
@@ -111,71 +172,82 @@ export default function ATSScreen() {
               </>
             )}
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
         {error && (
-          <View style={styles.errorCard}>
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.errorCard}>
             <Ionicons name="alert-circle-outline" size={18} color={Colors.danger} />
             <Text style={styles.errorText}>{error}</Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* Results */}
         {analysis && (
           <View style={styles.results}>
-            {/* Score */}
             <ScoreRing score={analysis.score} />
 
             {/* Summary */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Summary</Text>
+            <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.card}>
+              <View style={styles.cardTitleRow}>
+                <View style={styles.cardTitleAccent} />
+                <Text style={styles.cardTitle}>Summary</Text>
+              </View>
               <Text style={styles.summaryText}>{analysis.summary}</Text>
-            </View>
+            </Animated.View>
 
             {/* Matched keywords */}
             {analysis.matchedKeywords.length > 0 && (
-              <View style={styles.card}>
+              <Animated.View entering={FadeInDown.delay(160).duration(400)} style={styles.card}>
                 <View style={styles.cardTitleRow}>
-                  <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                  <View style={[styles.cardTitleAccent, { backgroundColor: Colors.success }]} />
+                  <Ionicons name="checkmark-circle" size={15} color={Colors.success} />
                   <Text style={styles.cardTitle}>Matched Keywords</Text>
+                  <View style={[styles.countBadge, { backgroundColor: Colors.success + "22" }]}>
+                    <Text style={[styles.countBadgeText, { color: Colors.success }]}>{analysis.matchedKeywords.length}</Text>
+                  </View>
                 </View>
                 <View style={styles.chipRow}>
-                  {analysis.matchedKeywords.map((k) => (
-                    <KeywordChip key={k} label={k} type="match" />
+                  {analysis.matchedKeywords.map((k, i) => (
+                    <KeywordChip key={k} label={k} type="match" index={i} />
                   ))}
                 </View>
-              </View>
+              </Animated.View>
             )}
 
             {/* Missing keywords */}
             {analysis.missingKeywords.length > 0 && (
-              <View style={styles.card}>
+              <Animated.View entering={FadeInDown.delay(220).duration(400)} style={styles.card}>
                 <View style={styles.cardTitleRow}>
-                  <Ionicons name="close-circle" size={16} color={Colors.danger} />
+                  <View style={[styles.cardTitleAccent, { backgroundColor: Colors.danger }]} />
+                  <Ionicons name="close-circle" size={15} color={Colors.danger} />
                   <Text style={styles.cardTitle}>Missing Keywords</Text>
+                  <View style={[styles.countBadge, { backgroundColor: Colors.danger + "22" }]}>
+                    <Text style={[styles.countBadgeText, { color: Colors.danger }]}>{analysis.missingKeywords.length}</Text>
+                  </View>
                 </View>
                 <View style={styles.chipRow}>
-                  {analysis.missingKeywords.map((k) => (
-                    <KeywordChip key={k} label={k} type="miss" />
+                  {analysis.missingKeywords.map((k, i) => (
+                    <KeywordChip key={k} label={k} type="miss" index={i} />
                   ))}
                 </View>
-              </View>
+              </Animated.View>
             )}
 
             {/* Suggestions */}
             {analysis.suggestions.length > 0 && (
-              <View style={styles.card}>
+              <Animated.View entering={FadeInDown.delay(280).duration(400)} style={styles.card}>
                 <View style={styles.cardTitleRow}>
-                  <Ionicons name="bulb-outline" size={16} color={Colors.cyan} />
+                  <View style={[styles.cardTitleAccent, { backgroundColor: Colors.cyan }]} />
+                  <Ionicons name="bulb-outline" size={15} color={Colors.cyan} />
                   <Text style={styles.cardTitle}>Suggestions</Text>
                 </View>
                 {analysis.suggestions.map((s, i) => (
-                  <View key={i} style={styles.suggestionRow}>
-                    <Text style={styles.suggestionBullet}>•</Text>
+                  <Animated.View key={i} entering={FadeInDown.delay(300 + i * 50).duration(300)} style={styles.suggestionRow}>
+                    <View style={styles.suggestionDot} />
                     <Text style={styles.suggestionText}>{s}</Text>
-                  </View>
+                  </Animated.View>
                 ))}
-              </View>
+              </Animated.View>
             )}
           </View>
         )}
@@ -191,15 +263,10 @@ const styles = StyleSheet.create({
     paddingTop: 54,
     paddingBottom: Spacing.lg,
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: Colors.textPrimary,
-    letterSpacing: 2,
-  },
+  headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
+  headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
   scroll: { flex: 1, paddingHorizontal: Spacing.xl },
 
-  // Input
   inputCard: {
     backgroundColor: Colors.bgCard,
     borderRadius: Radius.lg,
@@ -209,13 +276,8 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     marginBottom: Spacing.lg,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
+  inputLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  inputLabel: { fontSize: 12, fontWeight: "700", color: Colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" },
   textArea: {
     backgroundColor: Colors.bgInput,
     borderWidth: 1,
@@ -225,67 +287,51 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 13,
     lineHeight: 20,
-    minHeight: 160,
+    minHeight: 150,
   },
+  textAreaFocused: { borderColor: Colors.cyan },
   analyzeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 13,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.blue,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
   },
-  analyzeBtnDisabled: { opacity: 0.5 },
+  analyzingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  analyzeBtnDisabled: { opacity: 0.45 },
   analyzeBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
   errorCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.sm,
-    backgroundColor: Colors.danger + "18",
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.danger + "44",
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
+    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+    backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.danger + "44",
+    padding: Spacing.lg, marginBottom: Spacing.lg,
   },
   errorText: { color: Colors.danger, fontSize: 13, flex: 1 },
 
-  // Results
-  results: { gap: Spacing.lg },
+  results: { gap: Spacing.md },
 
   scoreRingWrap: { alignItems: "center", paddingVertical: Spacing.xl },
-  scoreRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 6,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.md,
-  },
+  scoreRingContainer: { width: 130, height: 130, alignItems: "center", justifyContent: "center" },
+  scoreSvg: { position: "absolute" },
+  scoreCenter: { alignItems: "center" },
   scoreNumber: { fontSize: 36, fontWeight: "800" },
   scoreLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: "600" },
-  scoreGrade: { fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
+  scoreGrade: { fontSize: 15, fontWeight: "700", letterSpacing: 0.5, marginTop: Spacing.md },
 
   card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.md,
+    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
   },
   cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  cardTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary, letterSpacing: 0.3 },
+  cardTitleAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
+  cardTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary, flex: 1 },
+  countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
+  countBadgeText: { fontSize: 11, fontWeight: "700" },
   summaryText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
+  chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
   chipText: { fontSize: 12, fontWeight: "600" },
 
-  suggestionRow: { flexDirection: "row", gap: 8 },
-  suggestionBullet: { color: Colors.cyan, fontSize: 14, fontWeight: "800", marginTop: 1 },
+  suggestionRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  suggestionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.cyan, marginTop: 7, flexShrink: 0 },
   suggestionText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 });

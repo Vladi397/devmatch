@@ -1,15 +1,10 @@
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  StatusBar,
+  View, Text, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from "react-native";
+import Animated, { ZoomIn, FadeInDown } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
@@ -39,6 +34,7 @@ export default function RegisterScreen() {
     const errs = validate(email, password, repeat);
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
     setFieldErrors({});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     register(email, password);
   }
 
@@ -54,13 +50,13 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.logoWrap}>
+          <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.logoWrap}>
             <DevMatchLogo size="md" />
-          </View>
+          </Animated.View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Create your account</Text>
-            <Text style={styles.cardSubtitle}>Start optimizing your job hunt</Text>
+          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.card}>
+            <Text style={styles.cardTitle}>Create account</Text>
+            <Text style={styles.cardSubtitle}>Start optimizing your job hunt with AI</Text>
 
             <AuthInput
               icon="mail-outline"
@@ -114,33 +110,19 @@ export default function RegisterScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Sign up</Text>
+                <Text style={styles.btnPrimaryText}>Create Account</Text>
               )}
             </TouchableOpacity>
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Or continue with:</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <View style={styles.socialRow}>
-              {(["logo-google", "logo-apple", "logo-linkedin"] as const).map((ic) => (
-                <TouchableOpacity key={ic} style={styles.socialBtn} activeOpacity={0.75}>
-                  <Ionicons name={ic} size={20} color={Colors.textPrimary} />
+            <View style={styles.loginRow}>
+              <Text style={styles.loginText}>Already have an account? </Text>
+              <Link href="/login" asChild>
+                <TouchableOpacity>
+                  <Text style={styles.loginLink}>Sign in</Text>
                 </TouchableOpacity>
-              ))}
+              </Link>
             </View>
-          </View>
-
-          <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Already have an account? </Text>
-            <Link href="/login" asChild>
-              <TouchableOpacity>
-                <Text style={styles.loginLink}>Sign in</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -151,36 +133,36 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   flex: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingBottom: 40 },
-  blob: { position: "absolute", borderRadius: 999, opacity: 0.12 },
-  blobTL: { width: 260, height: 160, backgroundColor: "#3A4A8A", top: 20, left: -60, transform: [{ rotate: "-20deg" }] },
-  blobBR: { width: 220, height: 140, backgroundColor: "#2A3870", bottom: 100, right: -40, transform: [{ rotate: "15deg" }] },
+  blob: { position: "absolute", borderRadius: 999, opacity: 0.15 },
+  blobTL: { width: 300, height: 300, backgroundColor: Colors.blue, top: -100, left: -100 },
+  blobBR: { width: 250, height: 250, backgroundColor: Colors.cyan + "55", bottom: 50, right: -80 },
   logoWrap: { alignItems: "center", marginTop: 70, marginBottom: 36 },
   card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.xxl,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.xxl,
   },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary, textAlign: "center", marginBottom: 4 },
+  cardTitle: { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
   cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
   apiError: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#2A0F16", borderRadius: Radius.sm, padding: 10, marginBottom: Spacing.md,
+    backgroundColor: Colors.danger + "18", borderRadius: Radius.sm,
+    borderWidth: 1, borderColor: Colors.danger + "33",
+    padding: 10, marginBottom: Spacing.md,
   },
   apiErrorText: { color: Colors.danger, fontSize: 12, flex: 1 },
   btnPrimary: {
-    backgroundColor: Colors.blue, borderRadius: Radius.full,
-    paddingVertical: 15, alignItems: "center", marginBottom: Spacing.xl, marginTop: Spacing.sm,
+    backgroundColor: Colors.blue,
+    borderRadius: Radius.full,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+    marginTop: Spacing.sm,
   },
   btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
-  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: Spacing.lg },
-  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
-  dividerText: { fontSize: 12, color: Colors.textMuted, fontWeight: "500" },
-  socialRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.md },
-  socialBtn: {
-    width: 50, height: 44, borderRadius: Radius.sm,
-    borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgInput,
-    alignItems: "center", justifyContent: "center",
-  },
-  loginRow: { flexDirection: "row", justifyContent: "center", marginTop: Spacing.xl },
+  loginRow: { flexDirection: "row", justifyContent: "center" },
   loginText: { fontSize: 13, color: Colors.textSecondary },
   loginLink: { fontSize: 13, color: Colors.cyan, fontWeight: "600" },
 });

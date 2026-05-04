@@ -1,17 +1,17 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Platform, Image } from "react-native";
+import { View, Text, StyleSheet, Linking, Platform, Image, Pressable } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius, Spacing } from "@/constants/theme";
 
 const LOGO_DEV_TOKEN = "pk_AR5bsdAtQQ6NVIvvzPLQ8Q";
 
-// Known TLDs that might appear in company names (e.g. "lemon.io", "a.team")
 const KNOWN_TLDS = /\.(io|ai|co|app|dev|team|tech|xyz|net|org|gg|so|me)(\s|$)/i;
 const NOISE = /\b(ltd|limited|inc|corp|group|gmbh|bv|nv|plc|se|ag|sa|recruitment|staffing|consulting|solutions|services|technologies|technology|digital|global|uk|europe|international)\b/gi;
 
 function guessDomain(company: string): string {
   const first = company.split(/[-–,\(]/)[0].trim();
-  // If it already contains a known TLD, use it as a domain directly
   if (KNOWN_TLDS.test(first)) return first.replace(/\s/g, "").toLowerCase();
   const clean = first.replace(NOISE, "").replace(/[^a-z0-9]/gi, "").toLowerCase().trim();
   return clean + ".com";
@@ -94,8 +94,21 @@ function openJob(url: string) {
   }
 }
 
-export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) {
+function AnimBtn({ style, onPress, children }: { style: any; onPress: () => void; children: React.ReactNode }) {
+  const scale = useSharedValue(1);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.93, { damping: 15 }); }}
+      onPressOut={() => { scale.value = withSpring(1, { damping: 15 }); }}
+      onPress={onPress}
+    >
+      <Animated.View style={[style, anim]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
 
+export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -139,14 +152,23 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
       )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.btnView} onPress={() => openJob(job.url)} activeOpacity={0.8}>
+        <AnimBtn
+          style={styles.btnView}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            openJob(job.url);
+          }}
+        >
           <Ionicons name="open-outline" size={14} color="#fff" />
           <Text style={styles.btnViewText}>View Job</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </AnimBtn>
+
+        <AnimBtn
           style={[styles.btnSave, saved && styles.btnSaved]}
-          onPress={saved ? onUnsave : onSave}
-          activeOpacity={0.8}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            saved ? onUnsave?.() : onSave?.();
+          }}
         >
           <Ionicons
             name={saved ? "bookmark" : "bookmark-outline"}
@@ -156,7 +178,8 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
           <Text style={[styles.btnSaveText, saved && { color: Colors.blue }]}>
             {saved ? "Saved" : "Save"}
           </Text>
-        </TouchableOpacity>
+        </AnimBtn>
+
         <View style={styles.sourceBadge}>
           <Text style={styles.sourceText}>{job.source === "adzuna" ? "Adzuna" : "Remotive"}</Text>
         </View>
