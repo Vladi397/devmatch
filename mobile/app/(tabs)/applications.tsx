@@ -220,6 +220,7 @@ export default function ApplicationsScreen() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [counts, setCounts] = useState<Counts>({ all: 0, pending: 0, applied: 0, interview: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Motivation letter modal
   const [letterApp, setLetterApp] = useState<Application | null>(null);
@@ -243,16 +244,22 @@ export default function ApplicationsScreen() {
   const fetchApplications = useCallback(async (status?: AppStatus | "all") => {
     try {
       setLoading(true);
+      setFetchError(null);
       const token = await getToken();
       const url = status && status !== "all"
         ? `${API_URL}/applications?status=${status}`
         : `${API_URL}/applications`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(res.status === 401 ? "Session expired — please log out and log back in." : data.message || `Server error (${res.status})`);
+      }
       const data = await res.json();
       setApplications(data.applications);
       setCounts(data.counts);
-    } catch {}
+    } catch (err: any) {
+      setFetchError(err.message ?? "Could not connect to server. Is the backend running?");
+    }
     finally { setLoading(false); }
   }, [getToken]);
 
@@ -385,7 +392,16 @@ export default function ApplicationsScreen() {
 
       {/* List */}
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        {!loading && applications.length === 0 ? (
+        {!loading && !!fetchError && (
+          <Animated.View entering={FadeInDown.delay(200).duration(350)} style={styles.fetchErrorCard}>
+            <Ionicons name="wifi-outline" size={15} color={Colors.danger} />
+            <Text style={styles.fetchErrorText}>{fetchError}</Text>
+            <TouchableOpacity onPress={() => fetchApplications(activeFilter)} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+        {!loading && !fetchError && applications.length === 0 ? (
           <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.emptyState}>
             <Ionicons name="bookmark-outline" size={44} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>No applications yet</Text>
@@ -762,6 +778,20 @@ const styles = StyleSheet.create({
     gap: 6, paddingVertical: 11, borderRadius: Radius.md, backgroundColor: Colors.blue,
   },
   refineBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+
+  fetchErrorCard: {
+    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+    backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.danger + "44",
+    padding: Spacing.lg, margin: Spacing.md, flexWrap: "wrap",
+  },
+  fetchErrorText: { flex: 1, color: Colors.danger, fontSize: 13, lineHeight: 18 },
+  retryBtn: {
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: Radius.full, borderWidth: 1,
+    borderColor: Colors.danger + "66", backgroundColor: Colors.danger + "22",
+  },
+  retryBtnText: { fontSize: 12, fontWeight: "700", color: Colors.danger },
 
   noDescWrap: { alignItems: "center", gap: Spacing.md, paddingTop: 40 },
   noDescTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },

@@ -10,7 +10,7 @@ async function runGemini(prompt: string, attempt = 0): Promise<string> {
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   try {
     const result = await model.generateContent(prompt);
@@ -78,11 +78,15 @@ Respond with ONLY the cover letter text — no subject line, no JSON, no markdow
     res.json({ letter });
   } catch (error: any) {
     console.error("Motivation letter error:", error);
-    const is503 = error?.message?.includes("503");
+    const msg = error?.message ?? "";
+    const is503 = msg.includes("503");
+    const is429 = msg.includes("429") || msg.toLowerCase().includes("quota");
     res.status(500).json({
       message: is503
-        ? "Gemini AI is busy right now. Please wait a moment and try again."
-        : "Failed to generate letter. Please try again.",
+        ? "Gemini AI is overloaded. Please wait a minute and try again."
+        : is429
+        ? "Gemini API quota exceeded. You may need to wait until tomorrow or upgrade your API plan."
+        : `Failed to generate letter: ${msg || "Unknown error"}`,
     });
   }
 });

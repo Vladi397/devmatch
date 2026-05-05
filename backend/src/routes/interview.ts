@@ -10,7 +10,7 @@ async function runGemini(prompt: string, attempt = 0): Promise<any> {
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   try {
     const result = await model.generateContent(prompt);
@@ -98,11 +98,15 @@ Respond with ONLY valid JSON — no markdown, no code blocks:
     res.json({ questions: data.questions });
   } catch (error: any) {
     console.error("Interview questions error:", error);
-    const is503 = error?.message?.includes("503");
+    const msg = error?.message ?? "";
+    const is503 = msg.includes("503");
+    const is429 = msg.includes("429") || msg.toLowerCase().includes("quota");
     res.status(500).json({
       message: is503
-        ? "Gemini AI is busy right now. Please wait a moment and try again."
-        : "Failed to generate questions. Please try again.",
+        ? "Gemini AI is overloaded. Please wait a minute and try again."
+        : is429
+        ? "Gemini API quota exceeded. You may need to wait until tomorrow or upgrade your API plan."
+        : `Failed to generate questions: ${msg || "Unknown error"}`,
     });
   }
 });
@@ -142,11 +146,15 @@ Score guide: 85-100 = strong STAR with clear result, 65-84 = good structure with
     res.json(data);
   } catch (error: any) {
     console.error("Interview evaluate error:", error);
-    const is503 = error?.message?.includes("503");
+    const msg = error?.message ?? "";
+    const is503 = msg.includes("503");
+    const is429 = msg.includes("429") || msg.toLowerCase().includes("quota");
     res.status(500).json({
       message: is503
-        ? "Gemini AI is busy right now. Please wait a moment and try again."
-        : "Failed to evaluate answer. Please try again.",
+        ? "Gemini AI is overloaded. Please wait a minute and try again."
+        : is429
+        ? "Gemini API quota exceeded. You may need to wait until tomorrow or upgrade your API plan."
+        : `Failed to evaluate answer: ${msg || "Unknown error"}`,
     });
   }
 });

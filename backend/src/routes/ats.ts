@@ -11,7 +11,7 @@ async function runGemini(prompt: string, attempt = 0): Promise<any> {
   if (!apiKey) throw new Error("GEMINI_API_KEY is not set in .env");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
   try {
     const result = await model.generateContent(prompt);

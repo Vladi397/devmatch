@@ -25,5 +25,18 @@ app.use("/interview", interviewRoutes);
 
 app.get("/health", (_, res) => res.json({ status: "ok" }));
 
+app.get("/gemini-test", async (_, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.json({ ok: false, error: "GEMINI_API_KEY not set" });
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const result = await model.generateContent("Say hello in 3 words.");
+    res.json({ ok: true, response: result.response.text().trim() });
+  } catch (err: any) {
+    res.json({ ok: false, error: err?.message ?? "Unknown error" });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
