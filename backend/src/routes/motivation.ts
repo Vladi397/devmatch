@@ -78,7 +78,46 @@ Respond with ONLY the cover letter text — no subject line, no JSON, no markdow
     res.json({ letter });
   } catch (error: any) {
     console.error("Motivation letter error:", error);
-    res.status(500).json({ message: "Failed to generate letter", detail: error?.message });
+    const is503 = error?.message?.includes("503");
+    res.status(500).json({
+      message: is503
+        ? "Gemini AI is busy right now. Please wait a moment and try again."
+        : "Failed to generate letter. Please try again.",
+    });
+  }
+});
+
+router.post("/refine", protect, async (req: AuthRequest | any, res: Response) => {
+  try {
+    const { currentLetter, instruction, title, company, jobDescription } = req.body;
+
+    if (!currentLetter?.trim()) {
+      return res.status(400).json({ message: "currentLetter is required" });
+    }
+    if (!instruction?.trim()) {
+      return res.status(400).json({ message: "instruction is required" });
+    }
+
+    const prompt = `
+You are an expert career coach. Rewrite the cover letter below based on the user's specific instruction. Keep the job context and all specific examples — only apply the requested change. Maintain a professional, natural tone.
+
+Job Title: ${title || "the position"}
+Company: ${company || "the company"}
+${jobDescription ? `Job Description:\n${jobDescription}` : ""}
+
+Current Cover Letter:
+${currentLetter}
+
+User's Instruction: ${instruction}
+
+Respond with ONLY the refined cover letter text — no subject line, no JSON, no markdown, no preamble.
+    `.trim();
+
+    const letter = await runGemini(prompt);
+    res.json({ letter });
+  } catch (error: any) {
+    console.error("Motivation refine error:", error);
+    res.status(500).json({ message: "Failed to refine letter", detail: error?.message });
   }
 });
 

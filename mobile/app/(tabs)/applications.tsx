@@ -11,6 +11,7 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
+import InterviewModal from "@/components/InterviewModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors, Radius, Spacing } from "@/constants/theme";
@@ -109,12 +110,13 @@ function FilterChip({ filter, active, count, onPress }: { filter: typeof FILTERS
 }
 
 // ─── Application card ───
-function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter }: {
+function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPracticeInterview }: {
   app: Application;
   index: number;
   onStatusChange: (id: string, status: AppStatus) => void;
   onDelete: (id: string) => void;
   onGenerateLetter: (app: Application) => void;
+  onPracticeInterview: (app: Application) => void;
 }) {
   const status = STATUS_OPTIONS.find((s) => s.key === app.status)!;
 
@@ -177,6 +179,19 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter }: {
           <Text style={styles.letterBtnFullText}>Generate Cover Letter</Text>
         </TouchableOpacity>
 
+        {/* Practice Interview — full-width */}
+        <TouchableOpacity
+          style={styles.interviewBtnFull}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onPracticeInterview(app);
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="mic-outline" size={14} color={Colors.blue} />
+          <Text style={styles.interviewBtnFullText}>Practice Interview</Text>
+        </TouchableOpacity>
+
         {Platform.OS === "web" && (
           <View style={styles.cardActions}>
             {STATUS_OPTIONS.filter((s) => s.key !== app.status).map((s) => (
@@ -215,6 +230,15 @@ export default function ApplicationsScreen() {
   const [letter, setLetter] = useState<string | null>(null);
   const [letterError, setLetterError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Cover letter refinement
+  const [refineText, setRefineText] = useState("");
+  const [refining, setRefining] = useState(false);
+  const [refineCount, setRefineCount] = useState(0);
+  const [showRefinedBadge, setShowRefinedBadge] = useState(false);
+
+  // Mock interview modal
+  const [interviewApp, setInterviewApp] = useState<Application | null>(null);
 
   const fetchApplications = useCallback(async (status?: AppStatus | "all") => {
     try {
@@ -264,7 +288,7 @@ export default function ApplicationsScreen() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || data.message || "Failed to generate");
+      if (!res.ok) throw new Error(data.message || data.detail || "Failed to generate");
       setLetter(data.letter);
     } catch (err: any) { setLetterError(err.message ?? "Something went wrong"); }
     finally { setGenerating(false); }
@@ -281,6 +305,37 @@ export default function ApplicationsScreen() {
     setLetterApp(app);
     setJobDesc(""); setLetter(null); setLetterError(null); setCopied(false);
     setShowManualInput(false); setDescExpanded(false);
+    setRefineText(""); setRefineCount(0); setRefining(false); setShowRefinedBadge(false);
+  }
+
+  async function handleRefine() {
+    if (!letterApp || !letter || !refineText.trim()) return;
+    try {
+      setRefining(true);
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/motivation/refine`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          currentLetter: letter,
+          instruction: refineText.trim(),
+          title: letterApp.title,
+          company: letterApp.company,
+          jobDescription: letterApp.description ?? undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.detail || "Refinement failed");
+      setLetter(data.letter);
+      setRefineCount((c) => c + 1);
+      setRefineText("");
+      setShowRefinedBadge(true);
+      setTimeout(() => setShowRefinedBadge(false), 2000);
+    } catch (err: any) {
+      setLetterError(err.message ?? "Refinement failed");
+    } finally {
+      setRefining(false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -345,6 +400,7 @@ export default function ApplicationsScreen() {
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
               onGenerateLetter={openLetterModal}
+              onPracticeInterview={(a) => setInterviewApp(a)}
             />
           ))
         )}
@@ -484,9 +540,49 @@ export default function ApplicationsScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.regenerateBtn}
-                    onPress={() => { setLetter(null); setLetterError(null); }}
+                    onPress={() => { setLetter(null); setLetterError(null); setRefineCount(0); }}
                   >
                     <Text style={styles.regenerateBtnText}>Regenerate</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {/* ── Refinement row ── */}
+                <Animated.View entering={FadeInDown.delay(380).duration(400)} style={styles.refineSection}>
+                  <View style={styles.refineLabelRow}>
+                    <Ionicons name="sparkles-outline" size={13} color={Colors.blue} />
+                    <Text style={styles.refineLabel}>Refine with AI</Text>
+                    {refineCount > 0 && (
+                      <Animated.View entering={ZoomIn.duration(300).springify()} style={styles.refineBadge}>
+                        <Text style={styles.refineBadgeText}>Refined {refineCount}×</Text>
+                      </Animated.View>
+                    )}
+                    {showRefinedBadge && (
+                      <Animated.View entering={ZoomIn.duration(300).springify()} style={styles.refinedConfirm}>
+                        <Ionicons name="checkmark" size={11} color={Colors.success} />
+                        <Text style={styles.refinedConfirmText}>Done</Text>
+                      </Animated.View>
+                    )}
+                  </View>
+                  <TextInput
+                    style={styles.refineInput}
+                    placeholder="e.g. 'make it shorter' or 'add more about Python'"
+                    placeholderTextColor={Colors.textMuted}
+                    value={refineText}
+                    onChangeText={setRefineText}
+                    returnKeyType="send"
+                    onSubmitEditing={handleRefine}
+                  />
+                  <TouchableOpacity
+                    style={[styles.refineBtn, (!refineText.trim() || refining) && { opacity: 0.45 }]}
+                    onPress={handleRefine}
+                    disabled={!refineText.trim() || refining}
+                    activeOpacity={0.85}
+                  >
+                    {refining
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <Ionicons name="sparkles-outline" size={14} color="#fff" />
+                    }
+                    <Text style={styles.refineBtnText}>{refining ? "Refining…" : "Refine"}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               </>
@@ -495,6 +591,9 @@ export default function ApplicationsScreen() {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Mock Interview Modal */}
+      <InterviewModal app={interviewApp} onClose={() => setInterviewApp(null)} />
     </View>
   );
 }
@@ -561,6 +660,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cyan + "10", marginTop: Spacing.xs,
   },
   letterBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.cyan },
+  interviewBtnFull: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 7, paddingVertical: 11, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.blue + "44",
+    backgroundColor: Colors.blue + "10",
+  },
+  interviewBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.blue },
   cardActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: Spacing.xs, alignItems: "center" },
   webActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: 2 },
   webActionBtn: {
@@ -623,6 +729,39 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start", paddingVertical: 4,
   },
   expandBtnText: { fontSize: 12, fontWeight: "700", color: Colors.blue },
+
+  refineSection: {
+    gap: Spacing.sm,
+    backgroundColor: Colors.bgCard,
+    borderRadius: Radius.lg,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  refineLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  refineLabel: { fontSize: 12, fontWeight: "700", color: Colors.blue, flex: 1 },
+  refineBadge: {
+    backgroundColor: Colors.blue + "22", borderRadius: Radius.full,
+    borderWidth: 1, borderColor: Colors.blue + "55",
+    paddingHorizontal: 8, paddingVertical: 2,
+  },
+  refineBadgeText: { fontSize: 10, fontWeight: "700", color: Colors.blue },
+  refinedConfirm: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: Colors.success + "22", borderRadius: Radius.full,
+    borderWidth: 1, borderColor: Colors.success + "44",
+    paddingHorizontal: 8, paddingVertical: 2,
+  },
+  refinedConfirmText: { fontSize: 10, fontWeight: "700", color: Colors.success },
+  refineInput: {
+    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: Radius.md, padding: Spacing.md,
+    color: Colors.textPrimary, fontSize: 13,
+  },
+  refineBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 11, borderRadius: Radius.md, backgroundColor: Colors.blue,
+  },
+  refineBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 
   noDescWrap: { alignItems: "center", gap: Spacing.md, paddingTop: 40 },
   noDescTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },

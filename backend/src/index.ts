@@ -7,6 +7,7 @@ import atsRoutes from "./routes/ats";
 import jobsRoutes from "./routes/jobs";
 import applicationsRoutes from "./routes/applications";
 import motivationRoutes from "./routes/motivation";
+import interviewRoutes from "./routes/interview";
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use("/ats", atsRoutes);
 app.use("/jobs", jobsRoutes);
 app.use("/applications", applicationsRoutes);
 app.use("/motivation", motivationRoutes);
+app.use("/interview", interviewRoutes);
 
 app.get("/health", (_, res) => res.json({ status: "ok" }));
 

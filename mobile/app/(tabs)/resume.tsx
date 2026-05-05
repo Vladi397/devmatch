@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import * as DocumentPicker from "expo-document-picker";
+import ResumeImproveModal from "@/components/ResumeImproveModal";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +38,7 @@ export default function ResumeScreen() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showImprove, setShowImprove] = useState(false);
 
   async function fetchResume() {
     try {
@@ -187,6 +189,21 @@ export default function ResumeScreen() {
                 </TouchableOpacity>
               )}
             </Animated.View>
+
+            {/* Improve with AI */}
+            <Animated.View entering={FadeInDown.delay(450).duration(400)}>
+              <TouchableOpacity
+                style={styles.improveBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowImprove(true);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="sparkles-outline" size={16} color={Colors.cyan} />
+                <Text style={styles.improveBtnText}>Improve with AI</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </Animated.View>
         ) : (
           /* ── Empty State ── */
@@ -254,6 +271,12 @@ export default function ResumeScreen() {
           </Animated.View>
         )}
       </ScrollView>
+
+      <ResumeImproveModal
+        visible={showImprove}
+        onClose={() => setShowImprove(false)}
+        onApplied={fetchResume}
+      />
     </View>
   );
 }
@@ -357,6 +380,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.blue + "12",
   },
   replaceBtnText: { color: Colors.blue, fontWeight: "700", fontSize: 14 },
+  improveBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, paddingVertical: 13, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.cyan,
+    backgroundColor: Colors.cyan + "12",
+  },
+  improveBtnText: { color: Colors.cyan, fontWeight: "700", fontSize: 14 },
 
   errorCard: {
     flexDirection: "row", alignItems: "center", gap: Spacing.sm,

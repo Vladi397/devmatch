@@ -6,7 +6,12 @@
       "Bash(npx prisma *)",
       "Bash(npx tsc *)",
       "Bash(ipconfig)",
-      "Bash(findstr /i \"IPv4\")"
+      "Bash(findstr /i \"IPv4\")",
+      "Bash(Get-ChildItem -Path \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\backend\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(Get-ChildItem -Path \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\mobile\" -Recurse -Name)",
+      "Bash(Select-String \"IPv4\")"
     ]
   }
 }
