@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   StatusBar, Platform,
@@ -13,9 +13,10 @@ import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { JobCard, type Job } from "@/components/JobCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
-
 
 const ROLES: { label: string; query: string }[] = [
   { label: "Frontend", query: "frontend developer" },
@@ -38,8 +39,9 @@ const COUNTRIES: { flag: string; label: string; code: string }[] = [
   { flag: "🇵🇱", label: "PL", code: "pl" },
 ];
 
-// ─── Pulsing dot loader ───
-function PulseDot({ delay, color = Colors.blue }: { delay: number; color?: string }) {
+function PulseDot({ delay, color }: { delay: number; color?: string }) {
+  const { colors: Colors } = useTheme();
+  const dotColor = color ?? Colors.blue;
   const opacity = useSharedValue(0.25);
   const scale = useSharedValue(0.7);
   useEffect(() => {
@@ -51,10 +53,12 @@ function PulseDot({ delay, color = Colors.blue }: { delay: number; color?: strin
     ));
   }, []);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ scale: scale.value }] }));
-  return <Animated.View style={[{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }, style]} />;
+  return <Animated.View style={[{ width: 10, height: 10, borderRadius: 5, backgroundColor: dotColor }, style]} />;
 }
 
 function JobsLoader() {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   return (
     <Animated.View entering={FadeInDown.duration(300)} style={styles.loaderWrap}>
       <View style={{ flexDirection: "row", gap: 8 }}>
@@ -67,7 +71,6 @@ function JobsLoader() {
   );
 }
 
-// ─── Animated job card wrapper ───
 function AnimatedJobCard({ job, index, saved, onSave, onUnsave }: { job: Job; index: number; saved: boolean; onSave: () => void; onUnsave: () => void }) {
   const stagger = Math.min(index * 60, 360);
   return (
@@ -77,8 +80,9 @@ function AnimatedJobCard({ job, index, saved, onSave, onUnsave }: { job: Job; in
   );
 }
 
-// ─── Filter chip with press scale ───
 function RoleChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -101,6 +105,8 @@ function RoleChip({ label, active, onPress }: { label: string; active: boolean; 
 export default function JobsScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: Colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [selectedRole, setSelectedRole] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(0);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -159,17 +165,10 @@ export default function JobsScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          externalId: job.id,
-          title: job.title,
-          company: job.company,
-          location: job.location,
-          remote: job.remote,
-          salary: job.salary,
-          url: job.url,
-          source: job.source,
-          tags: job.tags,
-          postedAt: job.postedAt,
-          description: job.description,
+          externalId: job.id, title: job.title, company: job.company,
+          location: job.location, remote: job.remote, salary: job.salary,
+          url: job.url, source: job.source, tags: job.tags,
+          postedAt: job.postedAt, description: job.description,
         }),
       });
       setSavedIds((prev) => new Set([...prev, job.id]));
@@ -190,37 +189,28 @@ export default function JobsScreen() {
   function handleRoleChange(i: number) {
     if (i === selectedRole) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedRole(i);
-    setJobs([]);
-    setPage(1);
-    setHasMore(true);
+    setSelectedRole(i); setJobs([]); setPage(1); setHasMore(true);
   }
 
   function handleCountryChange(i: number) {
     if (i === selectedCountry) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSelectedCountry(i);
-    setJobs([]);
-    setPage(1);
-    setHasMore(true);
+    setSelectedCountry(i); setJobs([]); setPage(1); setHasMore(true);
   }
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <DevMatchLogo size="sm" />
         <Text style={styles.headerTitle}>JOBS</Text>
       </Animated.View>
 
-      {/* Country picker */}
       <Animated.View entering={FadeInDown.delay(80).duration(400)}>
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterBar}
-          contentContainerStyle={styles.filterContent}
+          horizontal showsHorizontalScrollIndicator={false}
+          style={styles.filterBar} contentContainerStyle={styles.filterContent}
         >
           {COUNTRIES.map((c, i) => (
             <TouchableOpacity
@@ -238,26 +228,17 @@ export default function JobsScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Role filter */}
       <Animated.View entering={FadeInDown.delay(160).duration(400)}>
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterBar}
-          contentContainerStyle={styles.filterContent}
+          horizontal showsHorizontalScrollIndicator={false}
+          style={styles.filterBar} contentContainerStyle={styles.filterContent}
         >
           {ROLES.map((r, i) => (
-            <RoleChip
-              key={r.query}
-              label={r.label}
-              active={i === selectedRole}
-              onPress={() => handleRoleChange(i)}
-            />
+            <RoleChip key={r.query} label={r.label} active={i === selectedRole} onPress={() => handleRoleChange(i)} />
           ))}
         </ScrollView>
       </Animated.View>
 
-      {/* List */}
       {loading ? (
         <JobsLoader />
       ) : error ? (
@@ -290,9 +271,7 @@ export default function JobsScreen() {
             <>
               {jobs.map((job, i) => (
                 <AnimatedJobCard
-                  key={job.id}
-                  job={job}
-                  index={i}
+                  key={job.id} job={job} index={i}
                   saved={savedIds.has(job.id)}
                   onSave={() => handleSave(job)}
                   onUnsave={() => handleUnsave(job)}
@@ -328,66 +307,64 @@ export default function JobsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 54,
-    paddingBottom: Spacing.md,
-  },
-  headerTitle: { fontSize: 13, fontWeight: "800", color: Colors.textMuted, letterSpacing: 2 },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    header: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.md,
+    },
+    headerTitle: { fontSize: 13, fontWeight: "800", color: Colors.textMuted, letterSpacing: 2 },
 
-  filterBar: { maxHeight: 48, flexShrink: 0 },
-  filterContent: { paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: 6 },
+    filterBar: { maxHeight: 48, flexShrink: 0 },
+    filterContent: { paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: 6 },
 
-  countryChip: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: Radius.full, borderWidth: 1,
-    borderColor: Colors.border, backgroundColor: Colors.bgCard,
-  },
-  countryChipActive: { borderColor: Colors.blue, backgroundColor: Colors.blue + "18" },
-  countryFlag: { fontSize: 14 },
-  countryLabel: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary },
-  countryLabelActive: { color: Colors.blue },
+    countryChip: {
+      flexDirection: "row", alignItems: "center", gap: 5,
+      paddingHorizontal: 12, paddingVertical: 6,
+      borderRadius: Radius.full, borderWidth: 1,
+      borderColor: Colors.border, backgroundColor: Colors.bgCard,
+    },
+    countryChipActive: { borderColor: Colors.blue, backgroundColor: Colors.blue + "18" },
+    countryFlag: { fontSize: 14 },
+    countryLabel: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary },
+    countryLabelActive: { color: Colors.blue },
 
-  roleChip: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    borderRadius: Radius.full, borderWidth: 1,
-    borderColor: Colors.border, backgroundColor: Colors.bgCard,
-  },
-  roleChipActive: { backgroundColor: Colors.blue, borderColor: Colors.blue },
-  roleChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: "500" },
-  roleChipTextActive: { color: "#fff", fontWeight: "700" },
+    roleChip: {
+      paddingHorizontal: 14, paddingVertical: 7,
+      borderRadius: Radius.full, borderWidth: 1,
+      borderColor: Colors.border, backgroundColor: Colors.bgCard,
+    },
+    roleChipActive: { backgroundColor: Colors.blue, borderColor: Colors.blue },
+    roleChipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: "500" },
+    roleChipTextActive: { color: "#fff", fontWeight: "700" },
 
-  loaderWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.lg },
-  loadingText: { fontSize: 13, color: Colors.textSecondary },
+    loaderWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.lg },
+    loadingText: { fontSize: 13, color: Colors.textSecondary },
 
-  scroll: { flex: 1, paddingHorizontal: Spacing.xl },
-  listHeader: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", paddingVertical: Spacing.md,
-  },
-  listHeaderText: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
-  listCount: { fontSize: 12, color: Colors.textMuted },
+    scroll: { flex: 1, paddingHorizontal: Spacing.xl },
+    listHeader: {
+      flexDirection: "row", justifyContent: "space-between",
+      alignItems: "center", paddingVertical: Spacing.md,
+    },
+    listHeaderText: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
+    listCount: { fontSize: 12, color: Colors.textMuted },
 
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.md, padding: Spacing.xl },
-  errorText: { fontSize: 13, color: Colors.danger, textAlign: "center" },
-  retryBtn: { paddingVertical: 10, paddingHorizontal: 24, borderRadius: Radius.md, backgroundColor: Colors.blue },
-  retryBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+    centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: Spacing.md, padding: Spacing.xl },
+    errorText: { fontSize: 13, color: Colors.danger, textAlign: "center" },
+    retryBtn: { paddingVertical: 10, paddingHorizontal: 24, borderRadius: Radius.md, backgroundColor: Colors.blue },
+    retryBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  emptyState: { alignItems: "center", gap: Spacing.md, paddingTop: 60 },
-  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center" },
+    emptyState: { alignItems: "center", gap: Spacing.md, paddingTop: 60 },
+    emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center" },
 
-  loadMoreBtn: {
-    alignItems: "center", justifyContent: "center",
-    paddingVertical: 14, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.border,
-    marginBottom: Spacing.lg, minHeight: 48,
-  },
-  loadMoreText: { fontSize: 14, fontWeight: "600", color: Colors.blue },
-  attribution: { textAlign: "center", fontSize: 10, color: Colors.textMuted, paddingBottom: Spacing.md },
-});
+    loadMoreBtn: {
+      alignItems: "center", justifyContent: "center",
+      paddingVertical: 14, borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.border,
+      marginBottom: Spacing.lg, minHeight: 48,
+    },
+    loadMoreText: { fontSize: 14, fontWeight: "600", color: Colors.blue },
+    attribution: { textAlign: "center", fontSize: 10, color: Colors.textMuted, paddingBottom: Spacing.md },
+  });
+}

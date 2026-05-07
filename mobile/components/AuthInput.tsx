@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   TextInputProps,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 
 interface AuthInputProps extends TextInputProps {
   label?: string;
@@ -26,6 +28,8 @@ export function AuthInput({
 }: AuthInputProps) {
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(isPassword);
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   return (
     <View style={styles.wrapper}>
@@ -67,38 +71,40 @@ export function AuthInput({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: { marginBottom: Spacing.md },
-  label: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.bgInput,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 13,
-  },
-  rowFocused: { borderColor: Colors.blue },
-  rowError: { borderColor: Colors.danger },
-  iconLeft: { marginRight: 10 },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.textPrimary,
-    fontWeight: "400",
-  },
-  errorText: {
-    marginTop: 5,
-    fontSize: 11,
-    color: Colors.danger,
-    fontWeight: "500",
-  },
-});
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    wrapper: { marginBottom: Spacing.md },
+    label: {
+      fontSize: 11,
+      fontWeight: "600",
+      color: Colors.textSecondary,
+      letterSpacing: 0.5,
+      marginBottom: 6,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: Colors.bgInput,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 13,
+    },
+    rowFocused: { borderColor: Colors.blue },
+    rowError: { borderColor: Colors.danger },
+    iconLeft: { marginRight: 10 },
+    input: {
+      flex: 1,
+      fontSize: 14,
+      color: Colors.textPrimary,
+      fontWeight: "400",
+    },
+    errorText: {
+      marginTop: 5,
+      fontSize: 11,
+      color: Colors.danger,
+      fontWeight: "500",
+    },
+  });
+}

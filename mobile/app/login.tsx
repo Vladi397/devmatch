@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
@@ -10,7 +10,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { AuthInput } from "@/components/AuthInput";
 import { useAuth } from "@/hooks/useAuth";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 
 function validate(email: string, password: string) {
   const errors: { email?: string; password?: string } = {};
@@ -23,6 +25,8 @@ function validate(email: string, password: string) {
 
 export default function LoginScreen() {
   const { login, loading, error } = useAuth();
+  const { colors: Colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
@@ -37,7 +41,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <View style={[styles.blob, styles.blobTL]} />
       <View style={[styles.blob, styles.blobBR]} />
 
@@ -122,44 +126,46 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingBottom: 40 },
-  blob: { position: "absolute", borderRadius: 999, opacity: 0.15 },
-  blobTL: { width: 300, height: 300, backgroundColor: Colors.blue, top: -100, left: -100 },
-  blobBR: { width: 250, height: 250, backgroundColor: Colors.cyan + "55", bottom: 50, right: -80 },
-  logoWrap: { alignItems: "center", marginTop: 80, marginBottom: 40 },
-  card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xxl,
-    gap: 0,
-  },
-  cardTitle: { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
-  cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
-  forgotRow: { alignSelf: "flex-end", marginBottom: Spacing.lg, marginTop: -4 },
-  forgotText: { fontSize: 13, color: Colors.blue, fontWeight: "500" },
-  apiError: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: Colors.danger + "18", borderRadius: Radius.sm,
-    borderWidth: 1, borderColor: Colors.danger + "33",
-    padding: 10, marginBottom: Spacing.md,
-  },
-  apiErrorText: { color: Colors.danger, fontSize: 12, flex: 1 },
-  btnPrimary: {
-    backgroundColor: Colors.blue,
-    borderRadius: Radius.full,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginBottom: Spacing.lg,
-    marginTop: Spacing.sm,
-  },
-  btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
-  registerRow: { flexDirection: "row", justifyContent: "center" },
-  registerText: { fontSize: 13, color: Colors.textSecondary },
-  registerLink: { fontSize: 13, color: Colors.cyan, fontWeight: "600" },
-  hint: { marginTop: Spacing.xl, textAlign: "center", fontSize: 11, color: Colors.textMuted },
-});
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    flex: { flex: 1 },
+    scroll: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingBottom: 40 },
+    blob: { position: "absolute", borderRadius: 999, opacity: 0.15 },
+    blobTL: { width: 300, height: 300, backgroundColor: Colors.blue, top: -100, left: -100 },
+    blobBR: { width: 250, height: 250, backgroundColor: Colors.cyan + "55", bottom: 50, right: -80 },
+    logoWrap: { alignItems: "center", marginTop: 80, marginBottom: 40 },
+    card: {
+      backgroundColor: Colors.bgCard,
+      borderRadius: Radius.xl,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      padding: Spacing.xxl,
+      gap: 0,
+    },
+    cardTitle: { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
+    cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
+    forgotRow: { alignSelf: "flex-end", marginBottom: Spacing.lg, marginTop: -4 },
+    forgotText: { fontSize: 13, color: Colors.blue, fontWeight: "500" },
+    apiError: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      backgroundColor: Colors.danger + "18", borderRadius: Radius.sm,
+      borderWidth: 1, borderColor: Colors.danger + "33",
+      padding: 10, marginBottom: Spacing.md,
+    },
+    apiErrorText: { color: Colors.danger, fontSize: 12, flex: 1 },
+    btnPrimary: {
+      backgroundColor: Colors.blue,
+      borderRadius: Radius.full,
+      paddingVertical: 15,
+      alignItems: "center",
+      marginBottom: Spacing.lg,
+      marginTop: Spacing.sm,
+    },
+    btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
+    registerRow: { flexDirection: "row", justifyContent: "center" },
+    registerText: { fontSize: 13, color: Colors.textSecondary },
+    registerLink: { fontSize: 13, color: Colors.cyan, fontWeight: "600" },
+    hint: { marginTop: Spacing.xl, textAlign: "center", fontSize: 11, color: Colors.textMuted },
+  });
+}

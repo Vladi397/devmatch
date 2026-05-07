@@ -1,54 +1,63 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import Svg, { Path, Line } from "react-native-svg";
-import { Colors } from "@/constants/theme";
+import Svg, { Circle, Path, Defs, ClipPath, G } from "react-native-svg";
 
 interface BrandLogoProps {
   size?: "sm" | "md" | "lg";
   showWordmark?: boolean;
 }
 
-// The X/diamond icon from the design - geometric crosshatch pattern
-function DevMatchIcon({ size = 40 }: { size?: number }) {
+// ─── Icon ────────────────────────────────────────────────────────────────────
+// Blue filled circle with 4 corner triangles creating an X/compass-star pattern
+function DevMatchIcon({ size = 40, uid = "a" }: { size?: number; uid?: string }) {
+  const clipId = `dm-clip-${uid}`;
   return (
-    <Svg width={size} height={size} viewBox="0 0 40 40">
-      {/* Outer diamond */}
-      <Path
-        d="M20 2 L38 20 L20 38 L2 20 Z"
-        fill="none"
-        stroke="#2D6EF5"
-        strokeWidth="2"
-      />
-      {/* Inner X lines */}
-      <Path
-        d="M11 11 L29 29 M29 11 L11 29"
-        stroke="#2D6EF5"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      {/* Center horizontal + vertical */}
-      <Path
-        d="M20 8 L20 32 M8 20 L32 20"
-        stroke="#2D6EF5"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
+    <Svg width={size} height={size} viewBox="0 0 100 100">
+      <Defs>
+        <ClipPath id={clipId}>
+          <Circle cx="50" cy="50" r="49" />
+        </ClipPath>
+      </Defs>
+
+      <Circle cx="50" cy="50" r="49" fill="#2563EB" />
+
+      <G clipPath={`url(#${clipId})`}>
+        <Path d="M 3 3 L 50 32 L 32 50 Z"   fill="rgba(4,14,68,0.5)" />
+        <Path d="M 97 3 L 50 32 L 68 50 Z"  fill="rgba(4,14,68,0.5)" />
+        <Path d="M 3 97 L 32 50 L 50 68 Z"  fill="rgba(4,14,68,0.5)" />
+        <Path d="M 97 97 L 68 50 L 50 68 Z" fill="rgba(4,14,68,0.5)" />
+        <Path d="M 50 32 L 50 68" stroke="rgba(4,14,68,0.25)" strokeWidth="2" />
+        <Path d="M 32 50 L 68 50" stroke="rgba(4,14,68,0.25)" strokeWidth="2" />
+      </G>
     </Svg>
   );
 }
 
+// ─── Wordmark ─────────────────────────────────────────────────────────────────
+// "DEV" in cyan + "MATCH" in pink/magenta — matches the actual logo palette
+function DevMatchWordmark({ fontSize = 20, letterSpacing = 3 }: { fontSize?: number; letterSpacing?: number }) {
+  return (
+    <View style={styles.wordmarkRow}>
+      <Text style={[styles.wordDev,   { fontSize, letterSpacing }]}>DEV</Text>
+      <Text style={[styles.wordMatch, { fontSize, letterSpacing }]}>MATCH</Text>
+    </View>
+  );
+}
+
+// ─── Public component ─────────────────────────────────────────────────────────
 export function DevMatchLogo({ size = "md", showWordmark = true }: BrandLogoProps) {
-  const iconSize = size === "sm" ? 28 : size === "lg" ? 56 : 40;
+  const configs = {
+    sm: { iconSize: 28, fontSize: 14, letterSpacing: 2,   gap: 4  },
+    md: { iconSize: 44, fontSize: 19, letterSpacing: 3,   gap: 7  },
+    lg: { iconSize: 72, fontSize: 27, letterSpacing: 4.5, gap: 10 },
+  };
+  const { iconSize, fontSize, letterSpacing, gap } = configs[size];
 
   return (
-    <View style={styles.container}>
-      <DevMatchIcon size={iconSize} />
+    <View style={[styles.container, { gap }]}>
+      <DevMatchIcon size={iconSize} uid={size} />
       {showWordmark && (
-        <View style={styles.wordmarkRow}>
-          {/* DEV in cyan, MATCH in pink */}
-          <Text style={[styles.wordDev, size === "lg" && styles.wordLg]}>DEV</Text>
-          <Text style={[styles.wordMatch, size === "lg" && styles.wordLg]}>MATCH</Text>
-        </View>
+        <DevMatchWordmark fontSize={fontSize} letterSpacing={letterSpacing} />
       )}
     </View>
   );
@@ -57,24 +66,16 @@ export function DevMatchLogo({ size = "md", showWordmark = true }: BrandLogoProp
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    gap: 6,
   },
   wordmarkRow: {
     flexDirection: "row",
   },
   wordDev: {
-    fontSize: 20,
     fontWeight: "800",
     color: "#00D4FF",
-    letterSpacing: 2,
   },
   wordMatch: {
-    fontSize: 20,
     fontWeight: "800",
     color: "#FF2D8A",
-    letterSpacing: 2,
-  },
-  wordLg: {
-    fontSize: 28,
   },
 });

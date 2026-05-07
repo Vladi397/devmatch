@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, Linking, Platform, Image, Pressable } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 
 const LOGO_DEV_TOKEN = "pk_AR5bsdAtQQ6NVIvvzPLQ8Q";
 
@@ -56,13 +58,14 @@ function initials(name: string): string {
 
 function CompanyAvatar({ company }: { company: string }) {
   const [failed, setFailed] = useState(false);
+  const { colors: Colors } = useTheme();
   const color = avatarColor(company);
 
   if (!failed) {
     return (
       <Image
         source={{ uri: logoUrl(company) }}
-        style={[styles.avatar, styles.avatarLogo]}
+        style={[avatarStyle.avatar, { backgroundColor: "#ffffff", padding: 4, borderColor: Colors.border, borderWidth: 1, borderRadius: Radius.sm }]}
         onError={() => setFailed(true)}
         resizeMode="contain"
       />
@@ -70,11 +73,16 @@ function CompanyAvatar({ company }: { company: string }) {
   }
 
   return (
-    <View style={[styles.avatar, { backgroundColor: color + "22", borderColor: color + "55", borderWidth: 1 }]}>
-      <Text style={[styles.avatarText, { color }]}>{initials(company)}</Text>
+    <View style={[avatarStyle.avatar, { backgroundColor: color + "22", borderColor: color + "55", borderWidth: 1, borderRadius: Radius.sm }]}>
+      <Text style={[avatarStyle.avatarText, { color }]}>{initials(company)}</Text>
     </View>
   );
 }
+
+const avatarStyle = StyleSheet.create({
+  avatar: { width: 44, height: 44, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  avatarText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
+});
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -109,6 +117,9 @@ function AnimBtn({ style, onPress, children }: { style: any; onPress: () => void
 }
 
 export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -188,85 +199,50 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: Spacing.md,
-    gap: Spacing.md,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  avatarLogo: { backgroundColor: "#ffffff", padding: 4, borderColor: Colors.border },
-  avatarText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
-  headerInfo: { flex: 1 },
-  title: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary, marginBottom: 2, lineHeight: 19 },
-  company: { fontSize: 12, color: Colors.textSecondary, marginBottom: 3 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" },
-  metaText: { fontSize: 11, color: Colors.textMuted },
-  remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
-  remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
-  timeAgo: { fontSize: 10, color: Colors.textMuted, flexShrink: 0 },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: Colors.bgCard,
+      borderRadius: Radius.lg,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      padding: Spacing.lg,
+      marginBottom: Spacing.md,
+    },
+    header: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.md, gap: Spacing.md },
+    headerInfo: { flex: 1 },
+    title: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary, marginBottom: 2, lineHeight: 19 },
+    company: { fontSize: 12, color: Colors.textSecondary, marginBottom: 3 },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" },
+    metaText: { fontSize: 11, color: Colors.textMuted },
+    remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
+    remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
+    timeAgo: { fontSize: 10, color: Colors.textMuted, flexShrink: 0 },
 
-  middle: { gap: Spacing.sm, marginBottom: Spacing.md },
-  salaryRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: {
-    backgroundColor: Colors.bgChip,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  chipText: { fontSize: 11, color: Colors.cyan, fontWeight: "500" },
+    middle: { gap: Spacing.sm, marginBottom: Spacing.md },
+    salaryRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+    salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
+    chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    chip: {
+      backgroundColor: Colors.bgChip, borderRadius: Radius.full,
+      borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 4,
+    },
+    chipText: { fontSize: 11, color: Colors.cyan, fontWeight: "500" },
 
-  actions: { flexDirection: "row", gap: Spacing.sm, alignItems: "center" },
-  btnView: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    backgroundColor: Colors.blue,
-    borderRadius: Radius.md,
-    paddingVertical: 10,
-  },
-  btnViewText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  btnSave: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  btnSaved: { borderColor: Colors.blue, backgroundColor: Colors.blue + "12" },
-  btnSaveText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
-  sourceBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.sm,
-    backgroundColor: Colors.border,
-  },
-  sourceText: { fontSize: 9, fontWeight: "700", color: Colors.textMuted, letterSpacing: 0.3 },
-});
+    actions: { flexDirection: "row", gap: Spacing.sm, alignItems: "center" },
+    btnView: {
+      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 5, backgroundColor: Colors.blue, borderRadius: Radius.md, paddingVertical: 10,
+    },
+    btnViewText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+    btnSave: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 5, paddingVertical: 10, paddingHorizontal: 14,
+      borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
+    },
+    btnSaved: { borderColor: Colors.blue, backgroundColor: Colors.blue + "12" },
+    btnSaveText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
+    sourceBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.sm, backgroundColor: Colors.border },
+    sourceText: { fontSize: 9, fontWeight: "700", color: Colors.textMuted, letterSpacing: 0.3 },
+  });
+}

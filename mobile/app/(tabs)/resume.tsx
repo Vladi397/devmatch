@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, StatusBar, ActivityIndicator,
@@ -10,7 +10,9 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
 
 type Resume = {
@@ -33,6 +35,8 @@ function timeAgo(iso: string): string {
 export default function ResumeScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: Colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [resume, setResume] = useState<Resume | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -103,7 +107,7 @@ export default function ResumeScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.headerTitle}>My Resume</Text>
@@ -121,10 +125,8 @@ export default function ResumeScreen() {
             <Text style={styles.loadingText}>Loading your resume…</Text>
           </Animated.View>
         ) : resume ? (
-          /* ── Uploaded State ── */
           <Animated.View entering={FadeInDown.delay(60).duration(400)} style={{ gap: Spacing.lg }}>
 
-            {/* File card */}
             <View style={styles.resumeCard}>
               <View style={styles.resumeCardTop}>
                 <View style={styles.fileIconWrap}>
@@ -141,7 +143,6 @@ export default function ResumeScreen() {
               </View>
             </View>
 
-            {/* AI features */}
             <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.featuresCard}>
               <View style={styles.cardTitleRow}>
                 <View style={styles.cardTitleAccent} />
@@ -164,7 +165,6 @@ export default function ResumeScreen() {
               ))}
             </Animated.View>
 
-            {/* Content preview */}
             {!!resume.content?.trim() && (
               <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.previewCard}>
                 <View style={styles.cardTitleRow}>
@@ -175,7 +175,6 @@ export default function ResumeScreen() {
               </Animated.View>
             )}
 
-            {/* Replace button */}
             <Animated.View entering={FadeInDown.delay(380).duration(400)}>
               {uploading ? (
                 <View style={[styles.replaceBtn, { opacity: 0.7 }]}>
@@ -190,7 +189,6 @@ export default function ResumeScreen() {
               )}
             </Animated.View>
 
-            {/* Improve with AI */}
             <Animated.View entering={FadeInDown.delay(450).duration(400)}>
               <TouchableOpacity
                 style={styles.improveBtn}
@@ -206,7 +204,6 @@ export default function ResumeScreen() {
             </Animated.View>
           </Animated.View>
         ) : (
-          /* ── Empty State ── */
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={{ gap: Spacing.lg }}>
 
             <View style={styles.uploadZone}>
@@ -231,7 +228,6 @@ export default function ResumeScreen() {
               )}
             </View>
 
-            {/* What it unlocks */}
             <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.featuresCard}>
               <View style={styles.cardTitleRow}>
                 <View style={styles.cardTitleAccent} />
@@ -256,7 +252,6 @@ export default function ResumeScreen() {
           </Animated.View>
         )}
 
-        {/* Error / Success banners */}
         {!!error && (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.errorCard}>
             <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
@@ -281,126 +276,104 @@ export default function ResumeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 54,
-    paddingBottom: Spacing.lg,
-  },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
-  headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
-  scroll: { flex: 1, paddingHorizontal: Spacing.xl },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
+    headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
+    scroll: { flex: 1, paddingHorizontal: Spacing.xl },
 
-  centered: { alignItems: "center", justifyContent: "center", gap: Spacing.md, paddingTop: 80 },
-  loadingText: { fontSize: 13, color: Colors.textSecondary },
+    centered: { alignItems: "center", justifyContent: "center", gap: Spacing.md, paddingTop: 80 },
+    loadingText: { fontSize: 13, color: Colors.textSecondary },
 
-  uploadZone: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.xxl,
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  uploadIconWrap: {
-    width: 88, height: 88, borderRadius: Radius.xl,
-    backgroundColor: Colors.blue + "15",
-    alignItems: "center", justifyContent: "center",
-    marginBottom: Spacing.sm,
-  },
-  uploadZoneTitle: { fontSize: 18, fontWeight: "800", color: Colors.textPrimary },
-  uploadZoneSub: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
-  uploadBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 14, paddingHorizontal: 32,
-    borderRadius: Radius.md, backgroundColor: Colors.blue,
-    marginTop: Spacing.sm,
-  },
-  uploadBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    uploadZone: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
+      borderWidth: 1, borderColor: Colors.border,
+      padding: Spacing.xxl, alignItems: "center", gap: Spacing.md,
+    },
+    uploadIconWrap: {
+      width: 88, height: 88, borderRadius: Radius.xl,
+      backgroundColor: Colors.blue + "15",
+      alignItems: "center", justifyContent: "center", marginBottom: Spacing.sm,
+    },
+    uploadZoneTitle: { fontSize: 18, fontWeight: "800", color: Colors.textPrimary },
+    uploadZoneSub: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    uploadBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 14, paddingHorizontal: 32,
+      borderRadius: Radius.md, backgroundColor: Colors.blue, marginTop: Spacing.sm,
+    },
+    uploadBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
-  resumeCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  resumeCardTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
-  fileIconWrap: {
-    width: 52, height: 52, borderRadius: Radius.md,
-    backgroundColor: Colors.blue + "15",
-    alignItems: "center", justifyContent: "center", flexShrink: 0,
-  },
-  fileInfo: { flex: 1 },
-  fileName: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary },
-  fileDate: { fontSize: 12, color: Colors.textMuted, marginTop: 3 },
-  fileStatusBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: Colors.success + "18",
-    borderRadius: Radius.full,
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderWidth: 1, borderColor: Colors.success + "44", flexShrink: 0,
-  },
-  fileStatusText: { fontSize: 11, fontWeight: "700", color: Colors.success },
+    resumeCard: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg,
+    },
+    resumeCardTop: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
+    fileIconWrap: {
+      width: 52, height: 52, borderRadius: Radius.md,
+      backgroundColor: Colors.blue + "15",
+      alignItems: "center", justifyContent: "center", flexShrink: 0,
+    },
+    fileInfo: { flex: 1 },
+    fileName: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary },
+    fileDate: { fontSize: 12, color: Colors.textMuted, marginTop: 3 },
+    fileStatusBadge: {
+      flexDirection: "row", alignItems: "center", gap: 4,
+      backgroundColor: Colors.success + "18", borderRadius: Radius.full,
+      paddingHorizontal: 8, paddingVertical: 4,
+      borderWidth: 1, borderColor: Colors.success + "44", flexShrink: 0,
+    },
+    fileStatusText: { fontSize: 11, fontWeight: "700", color: Colors.success },
 
-  featuresCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  cardTitleAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
-  featuresTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
-  featureRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
-  featureIcon: { width: 36, height: 36, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  featureText: { flex: 1 },
-  featureName: { fontSize: 13, fontWeight: "600", color: Colors.textPrimary },
-  featureDesc: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+    featuresCard: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
+    },
+    cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    cardTitleAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
+    featuresTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
+    featureRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
+    featureIcon: { width: 36, height: 36, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+    featureText: { flex: 1 },
+    featureName: { fontSize: 13, fontWeight: "600", color: Colors.textPrimary },
+    featureDesc: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
 
-  previewCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-  },
-  previewTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
-  previewText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 19 },
+    previewCard: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
+    },
+    previewTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
+    previewText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 19 },
 
-  replaceBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 13, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.blue,
-    backgroundColor: Colors.blue + "12",
-  },
-  replaceBtnText: { color: Colors.blue, fontWeight: "700", fontSize: 14 },
-  improveBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 13, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.cyan,
-    backgroundColor: Colors.cyan + "12",
-  },
-  improveBtnText: { color: Colors.cyan, fontWeight: "700", fontSize: 14 },
+    replaceBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 13, borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.blue, backgroundColor: Colors.blue + "12",
+    },
+    replaceBtnText: { color: Colors.blue, fontWeight: "700", fontSize: 14 },
+    improveBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 13, borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.cyan, backgroundColor: Colors.cyan + "12",
+    },
+    improveBtnText: { color: Colors.cyan, fontWeight: "700", fontSize: 14 },
 
-  errorCard: {
-    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
-    backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.danger + "44",
-    padding: Spacing.lg, marginTop: Spacing.md,
-  },
-  errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
+    errorCard: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+      backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.danger + "44",
+      padding: Spacing.lg, marginTop: Spacing.md,
+    },
+    errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
 
-  successCard: {
-    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
-    backgroundColor: Colors.success + "18", borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.success + "44",
-    padding: Spacing.lg, marginTop: Spacing.md,
-  },
-  successText: { flex: 1, color: Colors.success, fontSize: 13, fontWeight: "600" },
-});
+    successCard: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+      backgroundColor: Colors.success + "18", borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.success + "44",
+      padding: Spacing.lg, marginTop: Spacing.md,
+    },
+    successText: { flex: 1, color: Colors.success, fontSize: 13, fontWeight: "600" },
+  });
+}

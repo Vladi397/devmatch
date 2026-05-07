@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Switch, StatusBar, Modal, TextInput, Alert, Share,
@@ -10,8 +10,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
 
 const NOTIF_KEY = "notif_prefs";
@@ -47,6 +49,8 @@ type SettingRowProps = {
 };
 
 function SettingRow({ icon, label, sub, onPress, toggle, toggleValue, onToggle, danger }: SettingRowProps) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={toggle ? 1 : 0.7}>
       <View style={[styles.rowIconWrap, { backgroundColor: (danger ? Colors.danger : Colors.blue) + "18" }]}>
@@ -71,6 +75,8 @@ function SettingRow({ icon, label, sub, onPress, toggle, toggleValue, onToggle, 
 }
 
 function SectionHeader({ title, index }: { title: string; index: number }) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   return (
     <Animated.View entering={FadeInDown.delay(index * 60).duration(350)} style={styles.sectionHeaderWrap}>
       <View style={styles.sectionAccent} />
@@ -81,6 +87,8 @@ function SectionHeader({ title, index }: { title: string; index: number }) {
 
 export default function SettingsScreen() {
   const { logout, getToken } = useAuth();
+  const { colors: Colors, isDark, toggle } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
   const [notifJobs, setNotifJobs] = useState(true);
@@ -188,7 +196,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
@@ -262,11 +270,21 @@ export default function SettingsScreen() {
         {/* General */}
         <SectionHeader title="General" index={2} />
         <Animated.View entering={FadeInDown.delay(280).duration(400)} style={styles.section}>
+          <SettingRow
+            icon={isDark ? "moon-outline" : "sunny-outline"}
+            label="Dark Mode"
+            toggle
+            toggleValue={isDark}
+            onToggle={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              toggle();
+            }}
+          />
           <SettingRow icon="shield-checkmark-outline" label="Data & Privacy" sub="How we use your data" onPress={handleDataPrivacy} />
           <SettingRow icon="people-outline" label="Invite Friends" sub="Share DevMatch with others" onPress={handleInviteFriends} />
         </Animated.View>
 
-        {/* Sign out — standalone, outside the sections */}
+        {/* Sign out */}
         <Animated.View entering={FadeInDown.delay(340).duration(400)} style={{ marginTop: Spacing.sm }}>
           <TouchableOpacity
             style={styles.logoutBtn}
@@ -324,83 +342,83 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg,
-  },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
-  scroll: { flex: 1, paddingHorizontal: Spacing.xl },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
+    scroll: { flex: 1, paddingHorizontal: Spacing.xl },
 
-  profileCard: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: Spacing.lg, marginBottom: Spacing.xl, gap: Spacing.md,
-  },
-  avatarBox: {
-    width: 56, height: 56, borderRadius: Radius.md,
-    borderWidth: 2, alignItems: "center", justifyContent: "center",
-  },
-  avatarText: { fontSize: 18, fontWeight: "800" },
-  profileInfo: { flex: 1 },
-  profileName: { fontSize: 15, fontWeight: "700", color: Colors.textPrimary },
-  profileEmail: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  editBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.blue + "55",
-    backgroundColor: Colors.blue + "11",
-  },
-  editBtnText: { fontSize: 12, color: Colors.blue, fontWeight: "700" },
+    profileCard: {
+      flexDirection: "row", alignItems: "center",
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border,
+      padding: Spacing.lg, marginBottom: Spacing.xl, gap: Spacing.md,
+    },
+    avatarBox: {
+      width: 56, height: 56, borderRadius: Radius.md,
+      borderWidth: 2, alignItems: "center", justifyContent: "center",
+    },
+    avatarText: { fontSize: 18, fontWeight: "800" },
+    profileInfo: { flex: 1 },
+    profileName: { fontSize: 15, fontWeight: "700", color: Colors.textPrimary },
+    profileEmail: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+    editBtn: {
+      flexDirection: "row", alignItems: "center", gap: 4,
+      paddingHorizontal: 12, paddingVertical: 7,
+      borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.blue + "55",
+      backgroundColor: Colors.blue + "11",
+    },
+    editBtnText: { fontSize: 12, color: Colors.blue, fontWeight: "700" },
 
-  sectionHeaderWrap: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm },
-  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
-  sectionHeader: {
-    fontSize: 11, fontWeight: "700", color: Colors.textSecondary,
-    letterSpacing: 1, textTransform: "uppercase",
-  },
+    sectionHeaderWrap: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: Spacing.sm },
+    sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
+    sectionHeader: {
+      fontSize: 11, fontWeight: "700", color: Colors.textSecondary,
+      letterSpacing: 1, textTransform: "uppercase",
+    },
 
-  section: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.xl, overflow: "hidden",
-  },
-  row: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: Spacing.lg, paddingVertical: 13,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    gap: Spacing.md,
-  },
-  rowIconWrap: { width: 32, height: 32, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center" },
-  rowContent: { flex: 1 },
-  rowLabel: { fontSize: 14, color: Colors.textPrimary, fontWeight: "500" },
-  rowSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
+    section: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.xl, overflow: "hidden",
+    },
+    row: {
+      flexDirection: "row", alignItems: "center",
+      paddingHorizontal: Spacing.lg, paddingVertical: 13,
+      borderBottomWidth: 1, borderBottomColor: Colors.border,
+      gap: Spacing.md,
+    },
+    rowIconWrap: { width: 32, height: 32, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center" },
+    rowContent: { flex: 1 },
+    rowLabel: { fontSize: 14, color: Colors.textPrimary, fontWeight: "500" },
+    rowSub: { fontSize: 11, color: Colors.textMuted, marginTop: 1 },
 
-  logoutBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm,
-    paddingVertical: 15, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.danger + "44", backgroundColor: Colors.danger + "11",
-  },
-  logoutText: { color: Colors.danger, fontSize: 15, fontWeight: "700" },
+    logoutBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: Spacing.sm,
+      paddingVertical: 15, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.danger + "44", backgroundColor: Colors.danger + "11",
+    },
+    logoutText: { color: Colors.danger, fontSize: 15, fontWeight: "700" },
 
-  modalOverlay: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center", alignItems: "center", padding: Spacing.xl,
-  },
-  modalCard: {
-    width: "100%", backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.xl, gap: Spacing.md,
-  },
-  modalTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary, marginBottom: Spacing.sm },
-  modalInput: {
-    backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: 12,
-    color: Colors.textPrimary, fontSize: 14,
-  },
-  errorText: { color: Colors.danger, fontSize: 13 },
-  modalButtons: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm },
-  cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
-  cancelBtnText: { color: Colors.textSecondary, fontWeight: "600" },
-  confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Colors.blue, alignItems: "center" },
-  confirmBtnText: { color: "#fff", fontWeight: "700" },
-});
+    modalOverlay: {
+      flex: 1, backgroundColor: "rgba(0,0,0,0.6)",
+      justifyContent: "center", alignItems: "center", padding: Spacing.xl,
+    },
+    modalCard: {
+      width: "100%", backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.xl, gap: Spacing.md,
+    },
+    modalTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary, marginBottom: Spacing.sm },
+    modalInput: {
+      backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.border,
+      borderRadius: Radius.md, paddingHorizontal: Spacing.lg, paddingVertical: 12,
+      color: Colors.textPrimary, fontSize: 14,
+    },
+    errorText: { color: Colors.danger, fontSize: 13 },
+    modalButtons: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm },
+    cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, alignItems: "center" },
+    cancelBtnText: { color: Colors.textSecondary, fontWeight: "600" },
+    confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Colors.blue, alignItems: "center" },
+    confirmBtnText: { color: "#fff", fontWeight: "700" },
+  });
+}

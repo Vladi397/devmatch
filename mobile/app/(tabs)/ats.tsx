@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, ActivityIndicator, StatusBar, Platform,
+  TextInput, ActivityIndicator, StatusBar,
 } from "react-native";
 import Animated, {
   FadeInDown, ZoomIn, useSharedValue, useAnimatedProps, withTiming, Easing,
@@ -11,7 +11,9 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
 
 type Analysis = {
@@ -27,6 +29,8 @@ const RADIUS = 52;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function ScoreRing({ score }: { score: number }) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const color = score >= 75 ? Colors.success : score >= 50 ? Colors.cyan : Colors.danger;
   const label = score >= 75 ? "Strong Match" : score >= 50 ? "Moderate Match" : "Weak Match";
   const progress = useSharedValue(0);
@@ -46,19 +50,10 @@ function ScoreRing({ score }: { score: number }) {
     <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.scoreRingWrap}>
       <View style={styles.scoreRingContainer}>
         <Svg width={130} height={130} style={styles.scoreSvg}>
-          {/* Track ring */}
-          <Circle
-            cx={65} cy={65} r={RADIUS}
-            stroke={Colors.border}
-            strokeWidth={8}
-            fill="none"
-          />
-          {/* Progress ring */}
+          <Circle cx={65} cy={65} r={RADIUS} stroke={Colors.border} strokeWidth={8} fill="none" />
           <AnimatedCircle
             cx={65} cy={65} r={RADIUS}
-            stroke={color}
-            strokeWidth={8}
-            fill="none"
+            stroke={color} strokeWidth={8} fill="none"
             strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
             animatedProps={animProps}
             strokeLinecap="round"
@@ -76,14 +71,15 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 function KeywordChip({ label, type, index }: { label: string; type: "match" | "miss"; index: number }) {
+  const { colors: Colors } = useTheme();
   const bg = type === "match" ? Colors.success + "22" : Colors.danger + "22";
   const fg = type === "match" ? Colors.success : Colors.danger;
   const icon = type === "match" ? "checkmark" : "close";
   return (
     <Animated.View entering={ZoomIn.delay(index * 40).duration(300).springify()}>
-      <View style={[styles.chip, { backgroundColor: bg }]}>
+      <View style={[{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: bg }]}>
         <Ionicons name={icon as any} size={10} color={fg} />
-        <Text style={[styles.chipText, { color: fg }]}>{label}</Text>
+        <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>{label}</Text>
       </View>
     </Animated.View>
   );
@@ -92,6 +88,8 @@ function KeywordChip({ label, type, index }: { label: string; type: "match" | "m
 export default function ATSScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: Colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [jobDescription, setJobDescription] = useState("");
   const [focused, setFocused] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -123,7 +121,7 @@ export default function ATSScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.headerTitle}>ATS Scanner</Text>
@@ -186,7 +184,6 @@ export default function ATSScreen() {
           <View style={styles.results}>
             <ScoreRing score={analysis.score} />
 
-            {/* Summary */}
             <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.card}>
               <View style={styles.cardTitleRow}>
                 <View style={styles.cardTitleAccent} />
@@ -195,7 +192,6 @@ export default function ATSScreen() {
               <Text style={styles.summaryText}>{analysis.summary}</Text>
             </Animated.View>
 
-            {/* Matched keywords */}
             {analysis.matchedKeywords.length > 0 && (
               <Animated.View entering={FadeInDown.delay(160).duration(400)} style={styles.card}>
                 <View style={styles.cardTitleRow}>
@@ -214,7 +210,6 @@ export default function ATSScreen() {
               </Animated.View>
             )}
 
-            {/* Missing keywords */}
             {analysis.missingKeywords.length > 0 && (
               <Animated.View entering={FadeInDown.delay(220).duration(400)} style={styles.card}>
                 <View style={styles.cardTitleRow}>
@@ -233,7 +228,6 @@ export default function ATSScreen() {
               </Animated.View>
             )}
 
-            {/* Suggestions */}
             {analysis.suggestions.length > 0 && (
               <Animated.View entering={FadeInDown.delay(280).duration(400)} style={styles.card}>
                 <View style={styles.cardTitleRow}>
@@ -256,82 +250,68 @@ export default function ATSScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    paddingHorizontal: Spacing.xl,
-    paddingTop: 54,
-    paddingBottom: Spacing.lg,
-  },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
-  headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
-  scroll: { flex: 1, paddingHorizontal: Spacing.xl },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
+    headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
+    headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
+    scroll: { flex: 1, paddingHorizontal: Spacing.xl },
 
-  inputCard: {
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  inputLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  inputLabel: { fontSize: 12, fontWeight: "700", color: Colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" },
-  textArea: {
-    backgroundColor: Colors.bgInput,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: Spacing.lg,
-    color: Colors.textPrimary,
-    fontSize: 13,
-    lineHeight: 20,
-    minHeight: 150,
-  },
-  textAreaFocused: { borderColor: Colors.cyan },
-  analyzeBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
-  },
-  analyzingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  analyzeBtnDisabled: { opacity: 0.45 },
-  analyzeBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    inputCard: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border,
+      padding: Spacing.lg, gap: Spacing.md, marginBottom: Spacing.lg,
+    },
+    inputLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    inputLabel: { fontSize: 12, fontWeight: "700", color: Colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase" },
+    textArea: {
+      backgroundColor: Colors.bgInput, borderWidth: 1, borderColor: Colors.border,
+      borderRadius: Radius.md, padding: Spacing.lg,
+      color: Colors.textPrimary, fontSize: 13, lineHeight: 20, minHeight: 150,
+    },
+    textAreaFocused: { borderColor: Colors.cyan },
+    analyzeBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
+    },
+    analyzingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    analyzeBtnDisabled: { opacity: 0.45 },
+    analyzeBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
-  errorCard: {
-    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
-    backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.danger + "44",
-    padding: Spacing.lg, marginBottom: Spacing.lg,
-  },
-  errorText: { color: Colors.danger, fontSize: 13, flex: 1 },
+    errorCard: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+      backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.danger + "44",
+      padding: Spacing.lg, marginBottom: Spacing.lg,
+    },
+    errorText: { color: Colors.danger, fontSize: 13, flex: 1 },
 
-  results: { gap: Spacing.md },
+    results: { gap: Spacing.md },
 
-  scoreRingWrap: { alignItems: "center", paddingVertical: Spacing.xl },
-  scoreRingContainer: { width: 130, height: 130, alignItems: "center", justifyContent: "center" },
-  scoreSvg: { position: "absolute" },
-  scoreCenter: { alignItems: "center" },
-  scoreNumber: { fontSize: 36, fontWeight: "800" },
-  scoreLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: "600" },
-  scoreGrade: { fontSize: 15, fontWeight: "700", letterSpacing: 0.5, marginTop: Spacing.md },
+    scoreRingWrap: { alignItems: "center", paddingVertical: Spacing.xl },
+    scoreRingContainer: { width: 130, height: 130, alignItems: "center", justifyContent: "center" },
+    scoreSvg: { position: "absolute" },
+    scoreCenter: { alignItems: "center" },
+    scoreNumber: { fontSize: 36, fontWeight: "800" },
+    scoreLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: "600" },
+    scoreGrade: { fontSize: 15, fontWeight: "700", letterSpacing: 0.5, marginTop: Spacing.md },
 
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
-  },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  cardTitleAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
-  cardTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary, flex: 1 },
-  countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
-  countBadgeText: { fontSize: 11, fontWeight: "700" },
-  summaryText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+    card: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
+    },
+    cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    cardTitleAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
+    cardTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary, flex: 1 },
+    countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full },
+    countBadgeText: { fontSize: 11, fontWeight: "700" },
+    summaryText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full },
-  chipText: { fontSize: 12, fontWeight: "600" },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 
-  suggestionRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
-  suggestionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.cyan, marginTop: 7, flexShrink: 0 },
-  suggestionText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
-});
+    suggestionRow: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+    suggestionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.cyan, marginTop: 7, flexShrink: 0 },
+    suggestionText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+  });
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View, Text, Modal, ScrollView, StyleSheet,
   TouchableOpacity, ActivityIndicator,
@@ -8,7 +8,9 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
 
 type Phase = "loading" | "results" | "applying" | "done";
@@ -32,6 +34,8 @@ export default function ResumeImproveModal({
 }) {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [improvements, setImprovements] = useState<string[]>([]);
@@ -86,7 +90,6 @@ export default function ResumeImproveModal({
     }
   }
 
-  // Collect up to 3 improved bullets from the first few experience entries
   const sampleBullets: string[] = [];
   if (resumeData?.experience) {
     for (const exp of resumeData.experience) {
@@ -99,7 +102,6 @@ export default function ResumeImproveModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.root}>
-        {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>AI Resume Improvements</Text>
@@ -115,7 +117,6 @@ export default function ResumeImproveModal({
           contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Loading ── */}
           {phase === "loading" && (
             <Animated.View entering={FadeInDown.duration(300)} style={styles.centered}>
               <ActivityIndicator color={Colors.blue} size="large" />
@@ -124,10 +125,8 @@ export default function ResumeImproveModal({
             </Animated.View>
           )}
 
-          {/* ── Results ── */}
           {phase === "results" && (
             <Animated.View entering={FadeInDown.duration(350)} style={{ gap: Spacing.lg }}>
-              {/* Error */}
               {!!error && (
                 <Animated.View entering={FadeInDown.duration(300)} style={styles.errorCard}>
                   <Ionicons name="alert-circle-outline" size={15} color={Colors.danger} />
@@ -135,7 +134,6 @@ export default function ResumeImproveModal({
                 </Animated.View>
               )}
 
-              {/* Count header */}
               {improvements.length > 0 && (
                 <View style={styles.countHeader}>
                   <Text style={styles.countTitle}>
@@ -147,7 +145,6 @@ export default function ResumeImproveModal({
                 </View>
               )}
 
-              {/* Improvement chips */}
               {improvements.length > 0 && (
                 <View style={styles.card}>
                   <View style={styles.cardTitleRow}>
@@ -156,11 +153,7 @@ export default function ResumeImproveModal({
                     <Text style={styles.cardTitle}>What will be improved</Text>
                   </View>
                   {improvements.map((imp, i) => (
-                    <Animated.View
-                      key={i}
-                      entering={FadeInDown.delay(i * 60).duration(300)}
-                      style={styles.improvementRow}
-                    >
+                    <Animated.View key={i} entering={FadeInDown.delay(i * 60).duration(300)} style={styles.improvementRow}>
                       <Ionicons name="sparkles-outline" size={13} color={Colors.cyan} />
                       <Text style={styles.improvementText}>{imp}</Text>
                     </Animated.View>
@@ -168,7 +161,6 @@ export default function ResumeImproveModal({
                 </View>
               )}
 
-              {/* Sample improved bullets */}
               {sampleBullets.length > 0 && (
                 <Animated.View entering={FadeInDown.delay(120).duration(350)} style={styles.card}>
                   <View style={styles.cardTitleRow}>
@@ -177,11 +169,7 @@ export default function ResumeImproveModal({
                     <Text style={styles.cardTitle}>Sample Improved Bullets</Text>
                   </View>
                   {sampleBullets.map((b, i) => (
-                    <Animated.View
-                      key={i}
-                      entering={FadeInDown.delay(160 + i * 70).duration(300)}
-                      style={styles.bulletRow}
-                    >
+                    <Animated.View key={i} entering={FadeInDown.delay(160 + i * 70).duration(300)} style={styles.bulletRow}>
                       <View style={styles.bulletDot} />
                       <Text style={styles.bulletText}>{b}</Text>
                     </Animated.View>
@@ -189,7 +177,6 @@ export default function ResumeImproveModal({
                 </Animated.View>
               )}
 
-              {/* Apply button */}
               {!error && improvements.length > 0 && (
                 <Animated.View entering={FadeInDown.delay(300).duration(350)} style={{ gap: Spacing.md }}>
                   <TouchableOpacity style={styles.applyBtn} onPress={handleApply} activeOpacity={0.85}>
@@ -210,7 +197,6 @@ export default function ResumeImproveModal({
             </Animated.View>
           )}
 
-          {/* ── Applying ── */}
           {phase === "applying" && (
             <Animated.View entering={FadeInDown.duration(300)} style={styles.centered}>
               <ActivityIndicator color={Colors.blue} size="large" />
@@ -218,7 +204,6 @@ export default function ResumeImproveModal({
             </Animated.View>
           )}
 
-          {/* ── Done ── */}
           {phase === "done" && (
             <Animated.View entering={FadeInDown.duration(400)} style={styles.doneWrap}>
               <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.doneIconWrap}>
@@ -243,79 +228,78 @@ export default function ResumeImproveModal({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    backgroundColor: Colors.bgCard, gap: Spacing.md,
-  },
-  headerTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
-  headerSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  closeBtn: {
-    width: 34, height: 34, borderRadius: Radius.sm,
-    borderWidth: 1, borderColor: Colors.border,
-    alignItems: "center", justifyContent: "center", flexShrink: 0,
-  },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    header: {
+      flexDirection: "row", alignItems: "center",
+      paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg,
+      borderBottomWidth: 1, borderBottomColor: Colors.border,
+      backgroundColor: Colors.bgCard, gap: Spacing.md,
+    },
+    headerTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
+    headerSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+    closeBtn: {
+      width: 34, height: 34, borderRadius: Radius.sm,
+      borderWidth: 1, borderColor: Colors.border,
+      alignItems: "center", justifyContent: "center", flexShrink: 0,
+    },
 
-  centered: { alignItems: "center", gap: Spacing.lg, paddingTop: 80 },
-  centeredTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
-  centeredSub: { fontSize: 12, color: Colors.textMuted },
+    centered: { alignItems: "center", gap: Spacing.lg, paddingTop: 80 },
+    centeredTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
+    centeredSub: { fontSize: 12, color: Colors.textMuted },
 
-  errorCard: {
-    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
-    backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.danger + "44", padding: Spacing.lg,
-  },
-  errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
+    errorCard: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.sm,
+      backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.danger + "44", padding: Spacing.lg,
+    },
+    errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
 
-  countHeader: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
-  countTitle: { fontSize: 18, fontWeight: "800", color: Colors.textPrimary },
-  countBadge: {
-    backgroundColor: Colors.cyan + "22", borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.cyan + "55",
-    paddingHorizontal: 10, paddingVertical: 3,
-  },
-  countBadgeText: { fontSize: 13, fontWeight: "800", color: Colors.cyan },
+    countHeader: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+    countTitle: { fontSize: 18, fontWeight: "800", color: Colors.textPrimary },
+    countBadge: {
+      backgroundColor: Colors.cyan + "22", borderRadius: Radius.full,
+      borderWidth: 1, borderColor: Colors.cyan + "55",
+      paddingHorizontal: 10, paddingVertical: 3,
+    },
+    countBadgeText: { fontSize: 13, fontWeight: "800", color: Colors.cyan },
 
-  card: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
-  },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  cardAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
-  cardTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
+    card: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
+    },
+    cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+    cardAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },
+    cardTitle: { fontSize: 13, fontWeight: "700", color: Colors.textPrimary },
 
-  improvementRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
-  improvementText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+    improvementRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
+    improvementText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
 
-  bulletRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
-  bulletDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: Colors.success, marginTop: 7, flexShrink: 0,
-  },
-  bulletText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+    bulletRow: { flexDirection: "row", alignItems: "flex-start", gap: Spacing.sm },
+    bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.success, marginTop: 7, flexShrink: 0 },
+    bulletText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
-  applyBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
-  },
-  applyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  dismissBtn: { alignItems: "center", paddingVertical: 12 },
-  dismissBtnText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
+    applyBtn: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
+    },
+    applyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    dismissBtn: { alignItems: "center", paddingVertical: 12 },
+    dismissBtnText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
 
-  doneWrap: { alignItems: "center", gap: Spacing.lg, paddingTop: 60 },
-  doneIconWrap: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: Colors.success + "15",
-    alignItems: "center", justifyContent: "center",
-  },
-  doneTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
-  doneSub: { fontSize: 14, color: Colors.textSecondary, textAlign: "center", lineHeight: 22 },
-  doneBtn: {
-    marginTop: Spacing.md, paddingVertical: 14, paddingHorizontal: 48,
-    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
-  },
-  doneBtnText: { color: Colors.textSecondary, fontWeight: "700", fontSize: 15 },
-});
+    doneWrap: { alignItems: "center", gap: Spacing.lg, paddingTop: 60 },
+    doneIconWrap: {
+      width: 96, height: 96, borderRadius: 48,
+      backgroundColor: Colors.success + "15",
+      alignItems: "center", justifyContent: "center",
+    },
+    doneTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
+    doneSub: { fontSize: 14, color: Colors.textSecondary, textAlign: "center", lineHeight: 22 },
+    doneBtn: {
+      marginTop: Spacing.md, paddingVertical: 14, paddingHorizontal: 48,
+      borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
+    },
+    doneBtnText: { color: Colors.textSecondary, fontWeight: "700", fontSize: 15 },
+  });
+}

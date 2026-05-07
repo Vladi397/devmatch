@@ -1,8 +1,10 @@
 import { Tabs } from "expo-router";
+import { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
 
 type TabIconProps = {
   name: keyof typeof Ionicons.glyphMap;
@@ -12,6 +14,8 @@ type TabIconProps = {
 };
 
 function TabIcon({ name, focusedName, focused, label }: TabIconProps) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   return (
     <View style={styles.tabItem}>
       <Ionicons
@@ -32,6 +36,7 @@ function TabIcon({ name, focusedName, focused, label }: TabIconProps) {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { colors: Colors } = useTheme();
 
   return (
     <Tabs
@@ -85,20 +90,22 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingTop: 6,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: Colors.textMuted,
-  },
-  tabLabelActive: {
-    color: Colors.blue,
-    fontWeight: "700",
-  },
-});
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    tabItem: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      paddingTop: 6,
+    },
+    tabLabel: {
+      fontSize: 10,
+      fontWeight: "500",
+      color: Colors.textMuted,
+    },
+    tabLabelActive: {
+      color: Colors.blue,
+      fontWeight: "700",
+    },
+  });
+}

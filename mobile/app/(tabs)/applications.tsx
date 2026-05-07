@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, StatusBar, Platform, Alert,
@@ -14,9 +14,10 @@ import { DevMatchLogo } from "@/components/DevMatchLogo";
 import InterviewModal from "@/components/InterviewModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors, Radius, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
+import type { ColorPalette } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
-
 
 type AppStatus = "pending" | "applied" | "interview" | "rejected";
 
@@ -38,22 +39,6 @@ type Application = {
 
 type Counts = { all: number; pending: number; applied: number; interview: number; rejected: number };
 
-const FILTERS: { key: AppStatus | "all"; label: string; color: string; icon: keyof typeof import("@expo/vector-icons").Ionicons.glyphMap }[] = [
-  { key: "all", label: "All", color: Colors.textSecondary, icon: "apps-outline" },
-  { key: "pending", label: "Saved", color: Colors.cyan, icon: "bookmark-outline" },
-  { key: "applied", label: "Applied", color: Colors.blue, icon: "paper-plane-outline" },
-  { key: "interview", label: "Interview", color: Colors.success, icon: "calendar-outline" },
-  { key: "rejected", label: "Rejected", color: Colors.danger, icon: "close-circle-outline" },
-];
-
-const STATUS_OPTIONS: { key: AppStatus; label: string; color: string }[] = [
-  { key: "pending", label: "Saved", color: Colors.cyan },
-  { key: "applied", label: "Applied", color: Colors.blue },
-  { key: "interview", label: "Interview", color: Colors.success },
-  { key: "rejected", label: "Rejected", color: Colors.danger },
-];
-
-// ─── Count-up hook ───
 function useCountUp(target: number, delay = 0) {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -72,8 +57,9 @@ function useCountUp(target: number, delay = 0) {
   return count;
 }
 
-// ─── Stat box ───
 function StatBox({ label, value, color, icon, index }: { label: string; value: number; color: string; icon: any; index: number }) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const count = useCountUp(value, 250 + index * 80);
   return (
     <Animated.View entering={ZoomIn.delay(150 + index * 70).duration(400).springify()} style={styles.statBox}>
@@ -86,8 +72,12 @@ function StatBox({ label, value, color, icon, index }: { label: string; value: n
   );
 }
 
-// ─── Filter chip ───
-function FilterChip({ filter, active, count, onPress }: { filter: typeof FILTERS[0]; active: boolean; count: number; onPress: () => void }) {
+function FilterChip({ filter, active, count, onPress }: {
+  filter: { key: string; label: string; color: string; icon: any };
+  active: boolean; count: number; onPress: () => void;
+}) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const scale = useSharedValue(1);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -109,7 +99,6 @@ function FilterChip({ filter, active, count, onPress }: { filter: typeof FILTERS
   );
 }
 
-// ─── Application card ───
 function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPracticeInterview }: {
   app: Application;
   index: number;
@@ -118,6 +107,16 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
   onGenerateLetter: (app: Application) => void;
   onPracticeInterview: (app: Application) => void;
 }) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
+  const STATUS_OPTIONS: { key: AppStatus; label: string; color: string }[] = [
+    { key: "pending", label: "Saved", color: Colors.cyan },
+    { key: "applied", label: "Applied", color: Colors.blue },
+    { key: "interview", label: "Interview", color: Colors.success },
+    { key: "rejected", label: "Rejected", color: Colors.danger },
+  ];
+
   const status = STATUS_OPTIONS.find((s) => s.key === app.status)!;
 
   function showStatusPicker() {
@@ -166,7 +165,6 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
           </View>
         )}
 
-        {/* Cover Letter — full-width */}
         <TouchableOpacity
           style={styles.letterBtnFull}
           onPress={() => {
@@ -179,7 +177,6 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
           <Text style={styles.letterBtnFullText}>Generate Cover Letter</Text>
         </TouchableOpacity>
 
-        {/* Practice Interview — full-width */}
         <TouchableOpacity
           style={styles.interviewBtnFull}
           onPress={() => {
@@ -216,13 +213,23 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
 export default function ApplicationsScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors: Colors, isDark } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
+  const FILTERS = [
+    { key: "all" as const,       label: "All",      color: Colors.textSecondary, icon: "apps-outline" as const },
+    { key: "pending" as const,   label: "Saved",    color: Colors.cyan,          icon: "bookmark-outline" as const },
+    { key: "applied" as const,   label: "Applied",  color: Colors.blue,          icon: "paper-plane-outline" as const },
+    { key: "interview" as const, label: "Interview",color: Colors.success,       icon: "calendar-outline" as const },
+    { key: "rejected" as const,  label: "Rejected", color: Colors.danger,        icon: "close-circle-outline" as const },
+  ];
+
   const [activeFilter, setActiveFilter] = useState<AppStatus | "all">("all");
   const [applications, setApplications] = useState<Application[]>([]);
   const [counts, setCounts] = useState<Counts>({ all: 0, pending: 0, applied: 0, interview: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Motivation letter modal
   const [letterApp, setLetterApp] = useState<Application | null>(null);
   const [jobDesc, setJobDesc] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
@@ -232,13 +239,11 @@ export default function ApplicationsScreen() {
   const [letterError, setLetterError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Cover letter refinement
   const [refineText, setRefineText] = useState("");
   const [refining, setRefining] = useState(false);
   const [refineCount, setRefineCount] = useState(0);
   const [showRefinedBadge, setShowRefinedBadge] = useState(false);
 
-  // Mock interview modal
   const [interviewApp, setInterviewApp] = useState<Application | null>(null);
 
   const fetchApplications = useCallback(async (status?: AppStatus | "all") => {
@@ -259,8 +264,7 @@ export default function ApplicationsScreen() {
       setCounts(data.counts);
     } catch (err: any) {
       setFetchError(err.message ?? "Could not connect to server. Is the backend running?");
-    }
-    finally { setLoading(false); }
+    } finally { setLoading(false); }
   }, [getToken]);
 
   useEffect(() => { fetchApplications(activeFilter); }, [activeFilter]);
@@ -360,14 +364,13 @@ export default function ApplicationsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <DevMatchLogo size="sm" />
         <Text style={styles.headerTitle}>APPLICATIONS</Text>
       </Animated.View>
 
-      {/* Stats */}
       <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.statsRow}>
         <StatBox label="Saved" value={counts.pending} color={Colors.cyan} icon="bookmark-outline" index={0} />
         <StatBox label="Applied" value={counts.applied} color={Colors.blue} icon="paper-plane-outline" index={1} />
@@ -375,7 +378,6 @@ export default function ApplicationsScreen() {
         <StatBox label="Rejected" value={counts.rejected} color={Colors.danger} icon="close-circle-outline" index={3} />
       </Animated.View>
 
-      {/* Filters */}
       <Animated.View entering={FadeInUp.delay(160).duration(400)}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {FILTERS.map((f) => (
@@ -390,7 +392,6 @@ export default function ApplicationsScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* List */}
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {!loading && !!fetchError && (
           <Animated.View entering={FadeInDown.delay(200).duration(350)} style={styles.fetchErrorCard}>
@@ -437,7 +438,6 @@ export default function ApplicationsScreen() {
 
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.xl, gap: Spacing.lg }} nestedScrollEnabled>
 
-            {/* ── Generating spinner ── */}
             {generating && (
               <Animated.View entering={FadeInDown.duration(300)} style={styles.generatingWrap}>
                 <ActivityIndicator color={Colors.cyan} size="large" />
@@ -446,7 +446,6 @@ export default function ApplicationsScreen() {
               </Animated.View>
             )}
 
-            {/* ── Error banner ── */}
             {!generating && letterError && (
               <Animated.View entering={FadeInDown.duration(300)} style={styles.errorCard}>
                 <Ionicons name="alert-circle-outline" size={15} color={Colors.danger} />
@@ -454,7 +453,6 @@ export default function ApplicationsScreen() {
               </Animated.View>
             )}
 
-            {/* ── Pre-generate: description preview + button ── */}
             {!generating && !letter && !showManualInput && (
               letterApp?.description ? (
                 <Animated.View entering={FadeInDown.duration(350)} style={{ gap: Spacing.lg }}>
@@ -462,29 +460,17 @@ export default function ApplicationsScreen() {
                     <Text style={styles.inputLabel}>Job Description</Text>
                     {descExpanded ? (
                       <View style={styles.descPreviewBox}>
-                        <Text key="desc-expanded" style={styles.descPreviewText}>
-                          {letterApp.description}
-                        </Text>
-                        <TouchableOpacity
-                          style={styles.expandBtn}
-                          onPress={() => setDescExpanded(false)}
-                          activeOpacity={0.7}
-                        >
+                        <Text style={styles.descPreviewText}>{letterApp.description}</Text>
+                        <TouchableOpacity style={styles.expandBtn} onPress={() => setDescExpanded(false)} activeOpacity={0.7}>
                           <Text style={styles.expandBtnText}>See less</Text>
                           <Ionicons name="chevron-up" size={13} color={Colors.blue} />
                         </TouchableOpacity>
                       </View>
                     ) : (
                       <View style={styles.descPreviewBox}>
-                        <Text key="desc-collapsed" style={styles.descPreviewText} numberOfLines={6}>
-                          {letterApp.description}
-                        </Text>
+                        <Text style={styles.descPreviewText} numberOfLines={6}>{letterApp.description}</Text>
                         {letterApp.description.length > 300 && (
-                          <TouchableOpacity
-                            style={styles.expandBtn}
-                            onPress={() => setDescExpanded(true)}
-                            activeOpacity={0.7}
-                          >
+                          <TouchableOpacity style={styles.expandBtn} onPress={() => setDescExpanded(true)} activeOpacity={0.7}>
                             <Text style={styles.expandBtnText}>See more</Text>
                             <Ionicons name="chevron-down" size={13} color={Colors.blue} />
                           </TouchableOpacity>
@@ -492,10 +478,7 @@ export default function ApplicationsScreen() {
                       </View>
                     )}
                   </View>
-                  <TouchableOpacity
-                    style={styles.generateBtn}
-                    onPress={() => handleGenerateLetter(letterApp)}
-                  >
+                  <TouchableOpacity style={styles.generateBtn} onPress={() => handleGenerateLetter(letterApp)}>
                     <Ionicons name="sparkles" size={16} color="#fff" />
                     <Text style={styles.generateBtnText}>Generate Cover Letter</Text>
                   </TouchableOpacity>
@@ -512,14 +495,12 @@ export default function ApplicationsScreen() {
               )
             )}
 
-            {/* ── Manual paste fallback ── */}
             {!generating && !letter && showManualInput && (
               <Animated.View entering={FadeInDown.duration(300)} style={{ gap: Spacing.md }}>
                 <Text style={styles.inputLabel}>Paste the job description</Text>
                 <TextInput
                   style={styles.textArea}
-                  multiline
-                  numberOfLines={8}
+                  multiline numberOfLines={8}
                   placeholder="Paste the full job description here..."
                   placeholderTextColor={Colors.textMuted}
                   value={jobDesc}
@@ -537,7 +518,6 @@ export default function ApplicationsScreen() {
               </Animated.View>
             )}
 
-            {/* ── Generated letter ── */}
             {!generating && !!letter && (
               <>
                 <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.letterBanner}>
@@ -562,7 +542,6 @@ export default function ApplicationsScreen() {
                   </TouchableOpacity>
                 </Animated.View>
 
-                {/* ── Refinement row ── */}
                 <Animated.View entering={FadeInDown.delay(380).duration(400)} style={styles.refineSection}>
                   <View style={styles.refineLabelRow}>
                     <Ionicons name="sparkles-outline" size={13} color={Colors.blue} />
@@ -608,198 +587,153 @@ export default function ApplicationsScreen() {
         </View>
       </Modal>
 
-      {/* Mock Interview Modal */}
       <InterviewModal app={interviewApp} onClose={() => setInterviewApp(null)} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  header: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.md,
-  },
-  headerTitle: { fontSize: 13, fontWeight: "800", color: Colors.textMuted, letterSpacing: 2 },
+function makeStyles(Colors: ColorPalette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: Colors.bg },
+    header: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.md,
+    },
+    headerTitle: { fontSize: 13, fontWeight: "800", color: Colors.textMuted, letterSpacing: 2 },
 
-  statsRow: { flexDirection: "row", paddingHorizontal: Spacing.xl, gap: Spacing.sm, marginBottom: Spacing.md },
-  statBox: {
-    flex: 1, backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border, padding: Spacing.md,
-    alignItems: "center", gap: 3,
-  },
-  statIcon: { width: 26, height: 26, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center", marginBottom: 2 },
-  statValue: { fontSize: 18, fontWeight: "800", lineHeight: 22 },
-  statLabel: { fontSize: 8, fontWeight: "700", color: Colors.textMuted, letterSpacing: 0.5, textTransform: "uppercase" },
+    statsRow: { flexDirection: "row", paddingHorizontal: Spacing.xl, gap: Spacing.sm, marginBottom: Spacing.md },
+    statBox: {
+      flex: 1, backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.md,
+      alignItems: "center", gap: 3,
+    },
+    statIcon: { width: 26, height: 26, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center", marginBottom: 2 },
+    statValue: { fontSize: 18, fontWeight: "800", lineHeight: 22 },
+    statLabel: { fontSize: 8, fontWeight: "700", color: Colors.textMuted, letterSpacing: 0.5, textTransform: "uppercase" },
 
-  filterRow: { paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: Spacing.md },
-  filterChip: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 11, paddingVertical: 7,
-    borderRadius: Radius.full, borderWidth: 1,
-    borderColor: Colors.border, backgroundColor: Colors.bgCard,
-  },
-  filterChipText: { fontSize: 12, color: Colors.textMuted, fontWeight: "500" },
-  filterBadge: { borderRadius: Radius.full, paddingHorizontal: 5, paddingVertical: 1, minWidth: 16, alignItems: "center" },
-  filterBadgeText: { fontSize: 9, fontWeight: "700" },
+    filterRow: { paddingHorizontal: Spacing.xl, gap: Spacing.sm, paddingBottom: Spacing.md },
+    filterChip: {
+      flexDirection: "row", alignItems: "center", gap: 5,
+      paddingHorizontal: 11, paddingVertical: 7,
+      borderRadius: Radius.full, borderWidth: 1,
+      borderColor: Colors.border, backgroundColor: Colors.bgCard,
+    },
+    filterChipText: { fontSize: 12, color: Colors.textMuted, fontWeight: "500" },
+    filterBadge: { borderRadius: Radius.full, paddingHorizontal: 5, paddingVertical: 1, minWidth: 16, alignItems: "center" },
+    filterBadgeText: { fontSize: 9, fontWeight: "700" },
 
-  scroll: { flex: 1, paddingHorizontal: Spacing.xl },
+    scroll: { flex: 1, paddingHorizontal: Spacing.xl },
 
-  appCard: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: Spacing.lg, marginBottom: Spacing.md, gap: Spacing.sm,
-  },
-  appCardTop: { flexDirection: "row", gap: Spacing.md, alignItems: "flex-start" },
-  appInfo: { flex: 1 },
-  appTitle: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary, marginBottom: 2 },
-  appCompany: { fontSize: 12, color: Colors.textSecondary, marginBottom: 3 },
-  appMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
-  appMetaText: { fontSize: 11, color: Colors.textMuted },
-  remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
-  remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
+    appCard: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
+      borderWidth: 1, borderColor: Colors.border,
+      padding: Spacing.lg, marginBottom: Spacing.md, gap: Spacing.sm,
+    },
+    appCardTop: { flexDirection: "row", gap: Spacing.md, alignItems: "flex-start" },
+    appInfo: { flex: 1 },
+    appTitle: { fontSize: 14, fontWeight: "700", color: Colors.textPrimary, marginBottom: 2 },
+    appCompany: { fontSize: 12, color: Colors.textSecondary, marginBottom: 3 },
+    appMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
+    appMetaText: { fontSize: 11, color: Colors.textMuted },
+    remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
+    remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
 
-  statusBadge: {
-    flexDirection: "row", alignItems: "center", gap: 3,
-    paddingHorizontal: 9, paddingVertical: 5,
-    borderRadius: Radius.full, borderWidth: 1, flexShrink: 0,
-  },
-  statusText: { fontSize: 11, fontWeight: "700" },
+    statusBadge: {
+      flexDirection: "row", alignItems: "center", gap: 3,
+      paddingHorizontal: 9, paddingVertical: 5,
+      borderRadius: Radius.full, borderWidth: 1, flexShrink: 0,
+    },
+    statusText: { fontSize: 11, fontWeight: "700" },
 
-  salaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
+    salaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+    salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
 
-  letterBtnFull: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 7, paddingVertical: 11, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.cyan + "44",
-    backgroundColor: Colors.cyan + "10", marginTop: Spacing.xs,
-  },
-  letterBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.cyan },
-  interviewBtnFull: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 7, paddingVertical: 11, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.blue + "44",
-    backgroundColor: Colors.blue + "10",
-  },
-  interviewBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.blue },
-  cardActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: Spacing.xs, alignItems: "center" },
-  webActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: 2 },
-  webActionBtn: {
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: Radius.full, borderWidth: 1,
-  },
-  webActionText: { fontSize: 11, fontWeight: "600" },
-  webDeleteBtn: {
-    width: 28, height: 28, borderRadius: Radius.sm,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: Colors.danger + "18",
-  },
+    letterBtnFull: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 7, paddingVertical: 11, borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.cyan + "44",
+      backgroundColor: Colors.cyan + "10", marginTop: Spacing.xs,
+    },
+    letterBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.cyan },
+    interviewBtnFull: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 7, paddingVertical: 11, borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.blue + "44",
+      backgroundColor: Colors.blue + "10",
+    },
+    interviewBtnFullText: { fontSize: 13, fontWeight: "700", color: Colors.blue },
+    cardActions: { flexDirection: "row", gap: Spacing.sm, flexWrap: "wrap", marginTop: Spacing.xs, alignItems: "center" },
+    webActionBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full, borderWidth: 1 },
+    webActionText: { fontSize: 11, fontWeight: "600" },
+    webDeleteBtn: { width: 28, height: 28, borderRadius: Radius.sm, alignItems: "center", justifyContent: "center", backgroundColor: Colors.danger + "18" },
 
-  modalRoot: { flex: 1, backgroundColor: Colors.bg },
-  modalHeader: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.bgCard,
-  },
-  modalTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
-  modalSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  closeBtn: { width: 34, height: 34, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
+    modalRoot: { flex: 1, backgroundColor: Colors.bg },
+    modalHeader: {
+      flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg,
+      borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.bgCard,
+    },
+    modalTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
+    modalSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+    closeBtn: { width: 34, height: 34, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
 
-  inputLabel: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: Spacing.sm },
-  textArea: {
-    backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, padding: Spacing.lg,
-    color: Colors.textPrimary, fontSize: 13, lineHeight: 20, minHeight: 160,
-  },
-  errorCard: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, backgroundColor: Colors.danger + "18", borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.danger + "44", padding: Spacing.lg },
-  errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
-  generateBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.cyan },
-  generateBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+    inputLabel: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: Spacing.sm },
+    textArea: {
+      backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border,
+      borderRadius: Radius.md, padding: Spacing.lg,
+      color: Colors.textPrimary, fontSize: 13, lineHeight: 20, minHeight: 160,
+    },
+    errorCard: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, backgroundColor: Colors.danger + "18", borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.danger + "44", padding: Spacing.lg },
+    errorText: { flex: 1, color: Colors.danger, fontSize: 13 },
+    generateBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.cyan },
+    generateBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
 
-  letterBanner: { flexDirection: "row", gap: Spacing.md, alignItems: "flex-start", backgroundColor: Colors.success + "18", borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.success + "44", padding: Spacing.lg },
-  letterBannerText: { flex: 1, color: Colors.textSecondary, fontSize: 13, lineHeight: 20 },
-  letterBox: { backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg },
-  letterText: { color: Colors.textPrimary, fontSize: 13, lineHeight: 22 },
-  copyBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue },
-  copyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  regenerateBtn: { alignItems: "center", justifyContent: "center", paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
-  regenerateBtnText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
+    letterBanner: { flexDirection: "row", gap: Spacing.md, alignItems: "flex-start", backgroundColor: Colors.success + "18", borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.success + "44", padding: Spacing.lg },
+    letterBannerText: { flex: 1, color: Colors.textSecondary, fontSize: 13, lineHeight: 20 },
+    letterBox: { backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg },
+    letterText: { color: Colors.textPrimary, fontSize: 13, lineHeight: 22 },
+    copyBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue },
+    copyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    regenerateBtn: { alignItems: "center", justifyContent: "center", paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
+    regenerateBtnText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "600" },
 
-  emptyState: { alignItems: "center", gap: Spacing.md, paddingTop: 60 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
-  emptySubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    emptyState: { alignItems: "center", gap: Spacing.md, paddingTop: 60 },
+    emptyTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
+    emptySubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
 
-  generatingWrap: { alignItems: "center", gap: Spacing.lg, paddingTop: 60 },
-  generatingText: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
-  generatingSubText: { fontSize: 12, color: Colors.textMuted },
+    generatingWrap: { alignItems: "center", gap: Spacing.lg, paddingTop: 60 },
+    generatingText: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
+    generatingSubText: { fontSize: 12, color: Colors.textMuted },
 
-  descPreviewBox: {
-    backgroundColor: Colors.bgCard, borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: Spacing.lg, marginTop: Spacing.sm, gap: Spacing.md,
-  },
-  descPreviewText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
-  expandBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    alignSelf: "flex-start", paddingVertical: 4,
-  },
-  expandBtnText: { fontSize: 12, fontWeight: "700", color: Colors.blue },
+    descPreviewBox: {
+      backgroundColor: Colors.bgCard, borderRadius: Radius.md,
+      borderWidth: 1, borderColor: Colors.border,
+      padding: Spacing.lg, marginTop: Spacing.sm, gap: Spacing.md,
+    },
+    descPreviewText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+    expandBtn: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", paddingVertical: 4 },
+    expandBtnText: { fontSize: 12, fontWeight: "700", color: Colors.blue },
 
-  refineSection: {
-    gap: Spacing.sm,
-    backgroundColor: Colors.bgCard,
-    borderRadius: Radius.lg,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: Spacing.lg,
-  },
-  refineLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
-  refineLabel: { fontSize: 12, fontWeight: "700", color: Colors.blue, flex: 1 },
-  refineBadge: {
-    backgroundColor: Colors.blue + "22", borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.blue + "55",
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  refineBadgeText: { fontSize: 10, fontWeight: "700", color: Colors.blue },
-  refinedConfirm: {
-    flexDirection: "row", alignItems: "center", gap: 3,
-    backgroundColor: Colors.success + "22", borderRadius: Radius.full,
-    borderWidth: 1, borderColor: Colors.success + "44",
-    paddingHorizontal: 8, paddingVertical: 2,
-  },
-  refinedConfirmText: { fontSize: 10, fontWeight: "700", color: Colors.success },
-  refineInput: {
-    backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.md, padding: Spacing.md,
-    color: Colors.textPrimary, fontSize: 13,
-  },
-  refineBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, paddingVertical: 11, borderRadius: Radius.md, backgroundColor: Colors.blue,
-  },
-  refineBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+    refineSection: { gap: Spacing.sm, backgroundColor: Colors.bgCard, borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg },
+    refineLabelRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+    refineLabel: { fontSize: 12, fontWeight: "700", color: Colors.blue, flex: 1 },
+    refineBadge: { backgroundColor: Colors.blue + "22", borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.blue + "55", paddingHorizontal: 8, paddingVertical: 2 },
+    refineBadgeText: { fontSize: 10, fontWeight: "700", color: Colors.blue },
+    refinedConfirm: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: Colors.success + "22", borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.success + "44", paddingHorizontal: 8, paddingVertical: 2 },
+    refinedConfirmText: { fontSize: 10, fontWeight: "700", color: Colors.success },
+    refineInput: { backgroundColor: Colors.bg, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md, padding: Spacing.md, color: Colors.textPrimary, fontSize: 13 },
+    refineBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 11, borderRadius: Radius.md, backgroundColor: Colors.blue },
+    refineBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 
-  fetchErrorCard: {
-    flexDirection: "row", alignItems: "center", gap: Spacing.sm,
-    backgroundColor: Colors.danger + "18", borderRadius: Radius.md,
-    borderWidth: 1, borderColor: Colors.danger + "44",
-    padding: Spacing.lg, margin: Spacing.md, flexWrap: "wrap",
-  },
-  fetchErrorText: { flex: 1, color: Colors.danger, fontSize: 13, lineHeight: 18 },
-  retryBtn: {
-    paddingHorizontal: 12, paddingVertical: 5,
-    borderRadius: Radius.full, borderWidth: 1,
-    borderColor: Colors.danger + "66", backgroundColor: Colors.danger + "22",
-  },
-  retryBtnText: { fontSize: 12, fontWeight: "700", color: Colors.danger },
+    fetchErrorCard: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, backgroundColor: Colors.danger + "18", borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.danger + "44", padding: Spacing.lg, margin: Spacing.md, flexWrap: "wrap" },
+    fetchErrorText: { flex: 1, color: Colors.danger, fontSize: 13, lineHeight: 18 },
+    retryBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.full, borderWidth: 1, borderColor: Colors.danger + "66", backgroundColor: Colors.danger + "22" },
+    retryBtnText: { fontSize: 12, fontWeight: "700", color: Colors.danger },
 
-  noDescWrap: { alignItems: "center", gap: Spacing.md, paddingTop: 40 },
-  noDescTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
-  noDescText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
-  pasteBtn: {
-    marginTop: Spacing.sm, paddingVertical: 11, paddingHorizontal: 24,
-    borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.cyan,
-    backgroundColor: Colors.cyan + "18",
-  },
-  pasteBtnText: { fontSize: 13, fontWeight: "700", color: Colors.cyan },
-});
+    noDescWrap: { alignItems: "center", gap: Spacing.md, paddingTop: 40 },
+    noDescTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
+    noDescText: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", lineHeight: 20 },
+    pasteBtn: { marginTop: Spacing.sm, paddingVertical: 11, paddingHorizontal: 24, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.cyan, backgroundColor: Colors.cyan + "18" },
+    pasteBtnText: { fontSize: 13, fontWeight: "700", color: Colors.cyan },
+  });
+}
