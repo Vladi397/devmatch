@@ -11,28 +11,30 @@ import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { AuthInput } from "@/components/AuthInput";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
-
-function validate(email: string, password: string, repeat: string) {
-  const errors: { email?: string; password?: string; repeat?: string } = {};
-  if (!email.trim()) errors.email = "Email is required.";
-  else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Enter a valid email.";
-  if (!password) errors.password = "Password is required.";
-  else if (password.length < 6) errors.password = "Minimum 6 characters.";
-  if (!repeat) errors.repeat = "Please confirm your password.";
-  else if (repeat !== password) errors.repeat = "Passwords do not match.";
-  return errors;
-}
 
 export default function RegisterScreen() {
   const { register, loading, error } = useAuth();
   const { colors: Colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; repeat?: string }>({});
+
+  function validate(em: string, pw: string, rp: string) {
+    const errors: { email?: string; password?: string; repeat?: string } = {};
+    if (!em.trim()) errors.email = t("auth.emailRequired");
+    else if (!/\S+@\S+\.\S+/.test(em)) errors.email = t("auth.validEmail");
+    if (!pw) errors.password = t("auth.passwordRequired");
+    else if (pw.length < 6) errors.password = t("auth.minPassword");
+    if (!rp) errors.repeat = t("auth.confirmPassword");
+    else if (rp !== pw) errors.repeat = t("auth.passwordsNoMatch");
+    return errors;
+  }
 
   function handleRegister() {
     const errs = validate(email, password, repeat);
@@ -59,16 +61,16 @@ export default function RegisterScreen() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.card}>
-            <Text style={styles.cardTitle}>Create account</Text>
-            <Text style={styles.cardSubtitle}>Start optimizing your job hunt with AI</Text>
+            <Text style={styles.cardTitle}>{t("auth.createAccount")}</Text>
+            <Text style={styles.cardSubtitle}>{t("auth.registerSubtitle")}</Text>
 
             <AuthInput
               icon="mail-outline"
               placeholder="your.name@example.com"
               keyboardType="email-address"
               value={email}
-              onChangeText={(t) => {
-                setEmail(t);
+              onChangeText={(v) => {
+                setEmail(v);
                 if (fieldErrors.email) setFieldErrors((e) => ({ ...e, email: undefined }));
               }}
               error={fieldErrors.email}
@@ -76,11 +78,11 @@ export default function RegisterScreen() {
 
             <AuthInput
               icon="lock-closed-outline"
-              placeholder="Password"
+              placeholder={t("auth.password")}
               isPassword
               value={password}
-              onChangeText={(t) => {
-                setPassword(t);
+              onChangeText={(v) => {
+                setPassword(v);
                 if (fieldErrors.password) setFieldErrors((e) => ({ ...e, password: undefined }));
               }}
               error={fieldErrors.password}
@@ -88,11 +90,11 @@ export default function RegisterScreen() {
 
             <AuthInput
               icon="lock-closed-outline"
-              placeholder="Repeat Password"
+              placeholder={t("auth.repeatPassword")}
               isPassword
               value={repeat}
-              onChangeText={(t) => {
-                setRepeat(t);
+              onChangeText={(v) => {
+                setRepeat(v);
                 if (fieldErrors.repeat) setFieldErrors((e) => ({ ...e, repeat: undefined }));
               }}
               error={fieldErrors.repeat}
@@ -114,15 +116,15 @@ export default function RegisterScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.btnPrimaryText}>Create Account</Text>
+                <Text style={styles.btnPrimaryText}>{t("auth.createAccount")}</Text>
               )}
             </TouchableOpacity>
 
             <View style={styles.loginRow}>
-              <Text style={styles.loginText}>Already have an account? </Text>
+              <Text style={styles.loginText}>{t("auth.haveAccount")} </Text>
               <Link href="/login" asChild>
                 <TouchableOpacity>
-                  <Text style={styles.loginLink}>Sign in</Text>
+                  <Text style={styles.loginLink}>{t("auth.signIn")}</Text>
                 </TouchableOpacity>
               </Link>
             </View>
@@ -143,11 +145,8 @@ function makeStyles(Colors: ColorPalette) {
     blobBR: { width: 250, height: 250, backgroundColor: Colors.cyan + "55", bottom: 50, right: -80 },
     logoWrap: { alignItems: "center", marginTop: 70, marginBottom: 36 },
     card: {
-      backgroundColor: Colors.bgCard,
-      borderRadius: Radius.xl,
-      borderWidth: 1,
-      borderColor: Colors.border,
-      padding: Spacing.xxl,
+      backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
+      borderWidth: 1, borderColor: Colors.border, padding: Spacing.xxl,
     },
     cardTitle: { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
     cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
@@ -159,12 +158,9 @@ function makeStyles(Colors: ColorPalette) {
     },
     apiErrorText: { color: Colors.danger, fontSize: 12, flex: 1 },
     btnPrimary: {
-      backgroundColor: Colors.blue,
-      borderRadius: Radius.full,
-      paddingVertical: 15,
-      alignItems: "center",
-      marginBottom: Spacing.lg,
-      marginTop: Spacing.sm,
+      backgroundColor: Colors.blue, borderRadius: Radius.full,
+      paddingVertical: 15, alignItems: "center",
+      marginBottom: Spacing.lg, marginTop: Spacing.sm,
     },
     btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
     loginRow: { flexDirection: "row", justifyContent: "center" },

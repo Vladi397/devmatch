@@ -12,6 +12,7 @@ import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
@@ -24,10 +25,9 @@ async function loadItem(key: string): Promise<string | null> {
 type Counts = { pending: number; applied: number; interview: number; rejected: number; all: number };
 type RecentApp = { id: string; title: string; company: string; status: string; savedAt: string };
 
-function greeting(name: string) {
+function greetingTime(): "goodMorning" | "goodAfternoon" | "goodEvening" {
   const h = new Date().getHours();
-  const time = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  return `${time}, ${name.split(" ")[0]}`;
+  return h < 12 ? "goodMorning" : h < 18 ? "goodAfternoon" : "goodEvening";
 }
 
 function timeAgo(iso: string) {
@@ -78,6 +78,7 @@ export default function DashboardScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: Colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [userName, setUserName] = useState("there");
   const [counts, setCounts] = useState<Counts>({ pending: 0, applied: 0, interview: 0, rejected: 0, all: 0 });
@@ -85,17 +86,17 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const STATUS_META: Record<string, { icon: any; color: string; verb: string }> = {
-    pending:   { icon: "bookmark-outline",     color: Colors.cyan,    verb: "Saved" },
-    applied:   { icon: "paper-plane-outline",  color: Colors.blue,    verb: "Applied to" },
-    interview: { icon: "calendar-outline",     color: Colors.success, verb: "Interview at" },
-    rejected:  { icon: "close-circle-outline", color: Colors.danger,  verb: "Rejected from" },
+    pending:   { icon: "bookmark-outline",     color: Colors.cyan,    verb: t("dashboard.statusSaved") },
+    applied:   { icon: "paper-plane-outline",  color: Colors.blue,    verb: t("dashboard.statusAppliedTo") },
+    interview: { icon: "calendar-outline",     color: Colors.success, verb: t("dashboard.statusInterviewAt") },
+    rejected:  { icon: "close-circle-outline", color: Colors.danger,  verb: t("dashboard.statusRejectedFrom") },
   };
 
   const STAT_CONFIG = [
-    { key: "pending"   as const, label: "Saved",      icon: "bookmark-outline",     color: Colors.cyan },
-    { key: "applied"   as const, label: "Applied",    icon: "paper-plane-outline",  color: Colors.blue },
-    { key: "interview" as const, label: "Interviews", icon: "calendar-outline",     color: Colors.success },
-    { key: "rejected"  as const, label: "Rejected",   icon: "close-circle-outline", color: Colors.danger },
+    { key: "pending"   as const, label: t("dashboard.saved"),      icon: "bookmark-outline",     color: Colors.cyan },
+    { key: "applied"   as const, label: t("dashboard.applied"),    icon: "paper-plane-outline",  color: Colors.blue },
+    { key: "interview" as const, label: t("dashboard.interviews"), icon: "calendar-outline",     color: Colors.success },
+    { key: "rejected"  as const, label: t("dashboard.rejected"),   icon: "close-circle-outline", color: Colors.danger },
   ];
 
   const loadData = useCallback(async () => {
@@ -147,7 +148,9 @@ export default function DashboardScreen() {
         }
       >
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.greetBlock}>
-          <Text style={styles.greetText}>{greeting(userName)}</Text>
+          <Text style={styles.greetText}>
+            {t(`dashboard.${greetingTime()}`)}, {userName.split(" ")[0]}
+          </Text>
           <Text style={styles.greetSub}>
             {counts.all === 0
               ? "Start saving jobs to track your applications."
@@ -163,10 +166,10 @@ export default function DashboardScreen() {
 
         <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.sectionTitle}>{t("dashboard.recentActivity")}</Text>
             {counts.all > 0 && (
               <TouchableOpacity onPress={() => router.push("/(tabs)/applications")}>
-                <Text style={styles.sectionLink}>View all</Text>
+                <Text style={styles.sectionLink}>{t("dashboard.viewAll")}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -175,7 +178,7 @@ export default function DashboardScreen() {
             {recent.length === 0 ? (
               <View style={styles.emptyActivity}>
                 <Ionicons name="file-tray-outline" size={32} color={Colors.textMuted} />
-                <Text style={styles.emptyActivityTitle}>No activity yet</Text>
+                <Text style={styles.emptyActivityTitle}>{t("dashboard.noActivity")}</Text>
                 <Text style={styles.emptyActivityText}>Save a job to start tracking your applications.</Text>
               </View>
             ) : (

@@ -15,6 +15,7 @@ import InterviewModal from "@/components/InterviewModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
@@ -108,13 +109,14 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
   onPracticeInterview: (app: Application) => void;
 }) {
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const STATUS_OPTIONS: { key: AppStatus; label: string; color: string }[] = [
-    { key: "pending", label: "Saved", color: Colors.cyan },
-    { key: "applied", label: "Applied", color: Colors.blue },
-    { key: "interview", label: "Interview", color: Colors.success },
-    { key: "rejected", label: "Rejected", color: Colors.danger },
+    { key: "pending",   label: t("applications.statusSaved"),        color: Colors.cyan },
+    { key: "applied",   label: t("applications.statusApplied"),      color: Colors.blue },
+    { key: "interview", label: t("applications.statusInterviewing"), color: Colors.success },
+    { key: "rejected",  label: t("applications.statusRejected"),     color: Colors.danger },
   ];
 
   const status = STATUS_OPTIONS.find((s) => s.key === app.status)!;
@@ -174,7 +176,7 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
           activeOpacity={0.8}
         >
           <Ionicons name="sparkles-outline" size={14} color={Colors.cyan} />
-          <Text style={styles.letterBtnFullText}>Generate Cover Letter</Text>
+          <Text style={styles.letterBtnFullText}>{t("applications.generateLetter")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -186,7 +188,7 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
           activeOpacity={0.8}
         >
           <Ionicons name="mic-outline" size={14} color={Colors.blue} />
-          <Text style={styles.interviewBtnFullText}>Practice Interview</Text>
+          <Text style={styles.interviewBtnFullText}>{t("applications.practiceInterview")}</Text>
         </TouchableOpacity>
 
         {Platform.OS === "web" && (
@@ -214,14 +216,15 @@ export default function ApplicationsScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: Colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const FILTERS = [
-    { key: "all" as const,       label: "All",      color: Colors.textSecondary, icon: "apps-outline" as const },
-    { key: "pending" as const,   label: "Saved",    color: Colors.cyan,          icon: "bookmark-outline" as const },
-    { key: "applied" as const,   label: "Applied",  color: Colors.blue,          icon: "paper-plane-outline" as const },
-    { key: "interview" as const, label: "Interview",color: Colors.success,       icon: "calendar-outline" as const },
-    { key: "rejected" as const,  label: "Rejected", color: Colors.danger,        icon: "close-circle-outline" as const },
+    { key: "all" as const,       label: t("applications.filterAll"),         color: Colors.textSecondary, icon: "apps-outline" as const },
+    { key: "pending" as const,   label: t("applications.filterSaved"),       color: Colors.cyan,          icon: "bookmark-outline" as const },
+    { key: "applied" as const,   label: t("applications.filterApplied"),     color: Colors.blue,          icon: "paper-plane-outline" as const },
+    { key: "interview" as const, label: t("applications.filterInterviewing"), color: Colors.success,       icon: "calendar-outline" as const },
+    { key: "rejected" as const,  label: t("applications.filterRejected"),    color: Colors.danger,        icon: "close-circle-outline" as const },
   ];
 
   const [activeFilter, setActiveFilter] = useState<AppStatus | "all">("all");
@@ -368,14 +371,14 @@ export default function ApplicationsScreen() {
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <DevMatchLogo size="sm" />
-        <Text style={styles.headerTitle}>APPLICATIONS</Text>
+        <Text style={styles.headerTitle}>{t("applications.title")}</Text>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.statsRow}>
-        <StatBox label="Saved" value={counts.pending} color={Colors.cyan} icon="bookmark-outline" index={0} />
-        <StatBox label="Applied" value={counts.applied} color={Colors.blue} icon="paper-plane-outline" index={1} />
-        <StatBox label="Interview" value={counts.interview} color={Colors.success} icon="calendar-outline" index={2} />
-        <StatBox label="Rejected" value={counts.rejected} color={Colors.danger} icon="close-circle-outline" index={3} />
+        <StatBox label={t("dashboard.saved")} value={counts.pending} color={Colors.cyan} icon="bookmark-outline" index={0} />
+        <StatBox label={t("dashboard.applied")} value={counts.applied} color={Colors.blue} icon="paper-plane-outline" index={1} />
+        <StatBox label={t("dashboard.interviews")} value={counts.interview} color={Colors.success} icon="calendar-outline" index={2} />
+        <StatBox label={t("dashboard.rejected")} value={counts.rejected} color={Colors.danger} icon="close-circle-outline" index={3} />
       </Animated.View>
 
       <Animated.View entering={FadeInUp.delay(160).duration(400)}>
@@ -405,7 +408,7 @@ export default function ApplicationsScreen() {
         {!loading && !fetchError && applications.length === 0 ? (
           <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.emptyState}>
             <Ionicons name="bookmark-outline" size={44} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>No applications yet</Text>
+            <Text style={styles.emptyTitle}>{t("applications.empty")}</Text>
             <Text style={styles.emptySubtitle}>Tap Save on any job in the Jobs tab to start tracking it here.</Text>
           </Animated.View>
         ) : (
@@ -428,7 +431,7 @@ export default function ApplicationsScreen() {
         <View style={styles.modalRoot}>
           <View style={styles.modalHeader}>
             <View>
-              <Text style={styles.modalTitle}>Cover Letter</Text>
+              <Text style={styles.modalTitle}>{t("applications.coverLetterTitle")}</Text>
               {letterApp && <Text style={styles.modalSub}>{letterApp.title} · {letterApp.company}</Text>}
             </View>
             <TouchableOpacity style={styles.closeBtn} onPress={() => setLetterApp(null)}>
@@ -480,7 +483,7 @@ export default function ApplicationsScreen() {
                   </View>
                   <TouchableOpacity style={styles.generateBtn} onPress={() => handleGenerateLetter(letterApp)}>
                     <Ionicons name="sparkles" size={16} color="#fff" />
-                    <Text style={styles.generateBtnText}>Generate Cover Letter</Text>
+                    <Text style={styles.generateBtnText}>{t("applications.generateLetter")}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               ) : (
@@ -532,13 +535,13 @@ export default function ApplicationsScreen() {
                 <Animated.View entering={FadeInDown.delay(300).duration(400)} style={{ gap: Spacing.md }}>
                   <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
                     <Ionicons name={copied ? "checkmark-done-outline" : "copy-outline"} size={16} color="#fff" />
-                    <Text style={styles.copyBtnText}>{copied ? "Copied!" : "Copy to Clipboard"}</Text>
+                    <Text style={styles.copyBtnText}>{copied ? t("applications.copied") : t("applications.copy")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.regenerateBtn}
                     onPress={() => { setLetter(null); setLetterError(null); setRefineCount(0); }}
                   >
-                    <Text style={styles.regenerateBtnText}>Regenerate</Text>
+                    <Text style={styles.regenerateBtnText}>{t("applications.regenerate")}</Text>
                   </TouchableOpacity>
                 </Animated.View>
 
@@ -548,7 +551,7 @@ export default function ApplicationsScreen() {
                     <Text style={styles.refineLabel}>Refine with AI</Text>
                     {refineCount > 0 && (
                       <Animated.View entering={ZoomIn.duration(300).springify()} style={styles.refineBadge}>
-                        <Text style={styles.refineBadgeText}>Refined {refineCount}×</Text>
+                        <Text style={styles.refineBadgeText}>{t("applications.refinedN", { n: refineCount })}</Text>
                       </Animated.View>
                     )}
                     {showRefinedBadge && (
@@ -560,7 +563,7 @@ export default function ApplicationsScreen() {
                   </View>
                   <TextInput
                     style={styles.refineInput}
-                    placeholder="e.g. 'make it shorter' or 'add more about Python'"
+                    placeholder={t("applications.refinePlaceholder")}
                     placeholderTextColor={Colors.textMuted}
                     value={refineText}
                     onChangeText={setRefineText}
@@ -577,7 +580,7 @@ export default function ApplicationsScreen() {
                       ? <ActivityIndicator color="#fff" size="small" />
                       : <Ionicons name="sparkles-outline" size={14} color="#fff" />
                     }
-                    <Text style={styles.refineBtnText}>{refining ? "Refining…" : "Refine"}</Text>
+                    <Text style={styles.refineBtnText}>{refining ? "Refining…" : t("applications.refine")}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               </>

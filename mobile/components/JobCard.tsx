@@ -4,6 +4,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-na
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 
@@ -118,6 +119,7 @@ function AnimBtn({ style, onPress, children }: { style: any; onPress: () => void
 
 export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) {
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   return (
@@ -171,7 +173,7 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
           }}
         >
           <Ionicons name="open-outline" size={14} color="#fff" />
-          <Text style={styles.btnViewText}>View Job</Text>
+          <Text style={styles.btnViewText}>{t("jobs.viewJob")}</Text>
         </AnimBtn>
 
         <AnimBtn
@@ -187,7 +189,7 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
             color={saved ? Colors.blue : Colors.textSecondary}
           />
           <Text style={[styles.btnSaveText, saved && { color: Colors.blue }]}>
-            {saved ? "Saved" : "Save"}
+            {saved ? t("jobs.saved") : t("jobs.save")}
           </Text>
         </AnimBtn>
 

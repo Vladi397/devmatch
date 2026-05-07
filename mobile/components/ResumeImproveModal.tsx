@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
@@ -35,6 +36,7 @@ export default function ResumeImproveModal({
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -104,8 +106,8 @@ export default function ResumeImproveModal({
       <View style={styles.root}>
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>AI Resume Improvements</Text>
-            <Text style={styles.headerSub}>Powered by Gemini AI</Text>
+            <Text style={styles.headerTitle}>{t("resumeImprove.title")}</Text>
+            <Text style={styles.headerSub}>{t("resumeImprove.subtitle")}</Text>
           </View>
           <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
             <Ionicons name="close" size={20} color={Colors.textPrimary} />
@@ -120,8 +122,8 @@ export default function ResumeImproveModal({
           {phase === "loading" && (
             <Animated.View entering={FadeInDown.duration(300)} style={styles.centered}>
               <ActivityIndicator color={Colors.blue} size="large" />
-              <Text style={styles.centeredTitle}>Analyzing your resume…</Text>
-              <Text style={styles.centeredSub}>Finding specific improvements</Text>
+              <Text style={styles.centeredTitle}>{t("resumeImprove.analyzing")}</Text>
+              <Text style={styles.centeredSub}>{t("resumeImprove.analyzingSub")}</Text>
             </Animated.View>
           )}
 
@@ -137,7 +139,7 @@ export default function ResumeImproveModal({
               {improvements.length > 0 && (
                 <View style={styles.countHeader}>
                   <Text style={styles.countTitle}>
-                    {improvements.length} Improvement{improvements.length !== 1 ? "s" : ""} Found
+                    {t("resumeImprove.foundImprovements", { n: improvements.length })}
                   </Text>
                   <View style={styles.countBadge}>
                     <Text style={styles.countBadgeText}>{improvements.length}</Text>
@@ -150,7 +152,7 @@ export default function ResumeImproveModal({
                   <View style={styles.cardTitleRow}>
                     <View style={styles.cardAccent} />
                     <Ionicons name="checkmark-circle-outline" size={14} color={Colors.cyan} />
-                    <Text style={styles.cardTitle}>What will be improved</Text>
+                    <Text style={styles.cardTitle}>{t("resumeImprove.willImprove")}</Text>
                   </View>
                   {improvements.map((imp, i) => (
                     <Animated.View key={i} entering={FadeInDown.delay(i * 60).duration(300)} style={styles.improvementRow}>
@@ -166,7 +168,7 @@ export default function ResumeImproveModal({
                   <View style={styles.cardTitleRow}>
                     <View style={styles.cardAccent} />
                     <Ionicons name="trending-up-outline" size={14} color={Colors.success} />
-                    <Text style={styles.cardTitle}>Sample Improved Bullets</Text>
+                    <Text style={styles.cardTitle}>{t("resumeImprove.sampleBullets")}</Text>
                   </View>
                   {sampleBullets.map((b, i) => (
                     <Animated.View key={i} entering={FadeInDown.delay(160 + i * 70).duration(300)} style={styles.bulletRow}>
@@ -181,17 +183,17 @@ export default function ResumeImproveModal({
                 <Animated.View entering={FadeInDown.delay(300).duration(350)} style={{ gap: Spacing.md }}>
                   <TouchableOpacity style={styles.applyBtn} onPress={handleApply} activeOpacity={0.85}>
                     <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                    <Text style={styles.applyBtnText}>Apply Improvements</Text>
+                    <Text style={styles.applyBtnText}>{t("resumeImprove.applyBtn")}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.dismissBtn} onPress={onClose} activeOpacity={0.7}>
-                    <Text style={styles.dismissBtnText}>Dismiss</Text>
+                    <Text style={styles.dismissBtnText}>{t("resumeImprove.dismiss")}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               )}
 
               {error && (
                 <TouchableOpacity style={styles.dismissBtn} onPress={onClose} activeOpacity={0.7}>
-                  <Text style={styles.dismissBtnText}>Close</Text>
+                  <Text style={styles.dismissBtnText}>{t("resumeImprove.doneClose")}</Text>
                 </TouchableOpacity>
               )}
             </Animated.View>
@@ -200,7 +202,7 @@ export default function ResumeImproveModal({
           {phase === "applying" && (
             <Animated.View entering={FadeInDown.duration(300)} style={styles.centered}>
               <ActivityIndicator color={Colors.blue} size="large" />
-              <Text style={styles.centeredTitle}>Saving improved resume…</Text>
+              <Text style={styles.centeredTitle}>{t("resumeImprove.saving")}</Text>
             </Animated.View>
           )}
 
@@ -209,16 +211,14 @@ export default function ResumeImproveModal({
               <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.doneIconWrap}>
                 <Ionicons name="checkmark-circle" size={56} color={Colors.success} />
               </Animated.View>
-              <Text style={styles.doneTitle}>Resume Updated!</Text>
-              <Text style={styles.doneSub}>
-                Your improved resume has been saved and is now active.
-              </Text>
+              <Text style={styles.doneTitle}>{t("resumeImprove.doneTitle")}</Text>
+              <Text style={styles.doneSub}>{t("resumeImprove.doneSub")}</Text>
               <TouchableOpacity
                 style={styles.doneBtn}
                 onPress={() => { onApplied(); onClose(); }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.doneBtnText}>Close</Text>
+                <Text style={styles.doneBtnText}>{t("resumeImprove.doneClose")}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}

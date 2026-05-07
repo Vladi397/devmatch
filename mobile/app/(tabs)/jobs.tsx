@@ -14,6 +14,7 @@ import { JobCard, type Job } from "@/components/JobCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
@@ -58,6 +59,7 @@ function PulseDot({ delay, color }: { delay: number; color?: string }) {
 
 function JobsLoader() {
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   return (
     <Animated.View entering={FadeInDown.duration(300)} style={styles.loaderWrap}>
@@ -66,7 +68,7 @@ function JobsLoader() {
         <PulseDot delay={150} color={Colors.cyan} />
         <PulseDot delay={300} color={Colors.blue} />
       </View>
-      <Text style={styles.loadingText}>Finding jobs for you…</Text>
+      <Text style={styles.loadingText}>{t("jobs.loading")}</Text>
     </Animated.View>
   );
 }
@@ -106,6 +108,7 @@ export default function JobsScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: Colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [selectedRole, setSelectedRole] = useState(0);
   const [selectedCountry, setSelectedCountry] = useState(0);
@@ -204,7 +207,7 @@ export default function JobsScreen() {
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <DevMatchLogo size="sm" />
-        <Text style={styles.headerTitle}>JOBS</Text>
+        <Text style={styles.headerTitle}>{t("jobs.title")}</Text>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(80).duration(400)}>
@@ -246,7 +249,7 @@ export default function JobsScreen() {
           <Ionicons name="alert-circle-outline" size={32} color={Colors.danger} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => fetchJobs(selectedRole, selectedCountry, 1, false)}>
-            <Text style={styles.retryBtnText}>Retry</Text>
+            <Text style={styles.retryBtnText}>{t("jobs.loadMore")}</Text>
           </TouchableOpacity>
         </Animated.View>
       ) : (
@@ -259,13 +262,13 @@ export default function JobsScreen() {
             <Text style={styles.listHeaderText}>
               {ROLES[selectedRole].label} · {COUNTRIES[selectedCountry].flag} {COUNTRIES[selectedCountry].label}
             </Text>
-            <Text style={styles.listCount}>{jobs.length} listings</Text>
+            <Text style={styles.listCount}>{t("jobs.listings", { n: jobs.length })}</Text>
           </Animated.View>
 
           {jobs.length === 0 ? (
             <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.emptyState}>
               <Ionicons name="briefcase-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No jobs found. Try a different role or country.</Text>
+              <Text style={styles.emptyText}>{t("jobs.noJobs")}</Text>
             </Animated.View>
           ) : (
             <>
@@ -292,7 +295,7 @@ export default function JobsScreen() {
                         <PulseDot delay={300} />
                       </View>
                     ) : (
-                      <Text style={styles.loadMoreText}>Load More</Text>
+                      <Text style={styles.loadMoreText}>{t("jobs.loadMore")}</Text>
                     )}
                   </TouchableOpacity>
                 </Animated.View>

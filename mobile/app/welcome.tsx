@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 
@@ -18,26 +19,27 @@ const { height } = Dimensions.get("window");
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const { colors: Colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const FEATURES = [
     {
       icon: "mic-outline" as const,
       color: Colors.blue,
-      title: "AI Mock Interviews",
-      sub: "STAR coaching & answer scoring per job",
+      title: t("welcome.feature1Title"),
+      sub: t("welcome.feature1Sub"),
     },
     {
       icon: "document-text-outline" as const,
       color: Colors.cyan,
-      title: "Resume Optimization",
-      sub: "Line-by-line AI improvements & ATS scoring",
+      title: t("welcome.feature2Title"),
+      sub: t("welcome.feature2Sub"),
     },
     {
       icon: "sparkles-outline" as const,
       color: Colors.pink,
-      title: "Instant Cover Letters",
-      sub: "Personalized drafts you can chat & refine",
+      title: t("welcome.feature3Title"),
+      sub: t("welcome.feature3Sub"),
     },
   ];
 
@@ -55,28 +57,22 @@ export default function WelcomeScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Background blobs */}
       <View style={[styles.blob, styles.blobTop]} />
       <View style={[styles.blob, styles.blobMid]} />
       <View style={[styles.blob, styles.blobBot]} />
 
       <View style={[styles.inner, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
 
-        {/* Logo */}
         <Animated.View entering={ZoomIn.duration(600).springify()} style={styles.logoWrap}>
           <DevMatchLogo size="lg" />
         </Animated.View>
 
-        {/* Tagline */}
         <Animated.View entering={FadeInDown.delay(220).duration(400)} style={styles.taglineWrap}>
-          <Text style={styles.tagline}>Your AI-Powered</Text>
-          <Text style={styles.taglineAccent}>Job Hunt</Text>
-          <Text style={styles.taglineSub}>
-            Find jobs, nail interviews, and land offers — all in one place.
-          </Text>
+          <Text style={styles.tagline}>{t("welcome.tagline1")}</Text>
+          <Text style={styles.taglineAccent}>{t("welcome.tagline2")}</Text>
+          <Text style={styles.taglineSub}>{t("welcome.subtitle")}</Text>
         </Animated.View>
 
-        {/* Feature list */}
         <View style={styles.featureList}>
           {FEATURES.map((f, i) => (
             <Animated.View
@@ -95,28 +91,19 @@ export default function WelcomeScreen() {
           ))}
         </View>
 
-        {/* CTA buttons */}
         <Animated.View
           entering={FadeInUp.delay(680).duration(400).springify()}
           style={styles.ctas}
         >
-          <TouchableOpacity
-            style={styles.btnPrimary}
-            onPress={handleGetStarted}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnPrimaryText}>Get Started</Text>
+          <TouchableOpacity style={styles.btnPrimary} onPress={handleGetStarted} activeOpacity={0.85}>
+            <Text style={styles.btnPrimaryText}>{t("welcome.getStarted")}</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.btnSecondary}
-            onPress={handleSignIn}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={styles.btnSecondary} onPress={handleSignIn} activeOpacity={0.8}>
             <Text style={styles.btnSecondaryText}>
-              Already have an account?{" "}
-              <Text style={styles.btnSecondaryAccent}>Sign In</Text>
+              {t("welcome.alreadyHaveAccount")}{" "}
+              <Text style={styles.btnSecondaryAccent}>{t("welcome.signIn")}</Text>
             </Text>
           </TouchableOpacity>
         </Animated.View>

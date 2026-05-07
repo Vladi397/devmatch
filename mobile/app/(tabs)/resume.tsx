@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
@@ -36,6 +37,7 @@ export default function ResumeScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: Colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [resume, setResume] = useState<Resume | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,8 +112,8 @@ export default function ResumeScreen() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-        <Text style={styles.headerTitle}>My Resume</Text>
-        <Text style={styles.headerSub}>Upload your CV to power AI features</Text>
+        <Text style={styles.headerTitle}>{t("resume.title")}</Text>
+        <Text style={styles.headerSub}>{t("resume.noResumeHint")}</Text>
       </Animated.View>
 
       <ScrollView
@@ -179,12 +181,12 @@ export default function ResumeScreen() {
               {uploading ? (
                 <View style={[styles.replaceBtn, { opacity: 0.7 }]}>
                   <ActivityIndicator color={Colors.blue} size="small" />
-                  <Text style={styles.replaceBtnText}>Uploading…</Text>
+                  <Text style={styles.replaceBtnText}>{t("resume.uploading")}</Text>
                 </View>
               ) : (
                 <TouchableOpacity style={styles.replaceBtn} onPress={handleUpload} activeOpacity={0.85}>
                   <Ionicons name="cloud-upload-outline" size={16} color={Colors.blue} />
-                  <Text style={styles.replaceBtnText}>Replace Resume</Text>
+                  <Text style={styles.replaceBtnText}>{t("resume.replaceResume")}</Text>
                 </TouchableOpacity>
               )}
             </Animated.View>
@@ -199,7 +201,7 @@ export default function ResumeScreen() {
                 activeOpacity={0.85}
               >
                 <Ionicons name="sparkles-outline" size={16} color={Colors.cyan} />
-                <Text style={styles.improveBtnText}>Improve with AI</Text>
+                <Text style={styles.improveBtnText}>{t("resume.improveWithAI")}</Text>
               </TouchableOpacity>
             </Animated.View>
           </Animated.View>
@@ -210,20 +212,18 @@ export default function ResumeScreen() {
               <Animated.View entering={ZoomIn.delay(200).duration(500).springify()} style={styles.uploadIconWrap}>
                 <Ionicons name="document-text-outline" size={48} color={Colors.blue} />
               </Animated.View>
-              <Text style={styles.uploadZoneTitle}>No Resume Yet</Text>
-              <Text style={styles.uploadZoneSub}>
-                Upload your CV in PDF format to unlock the ATS scanner and cover letter generator.
-              </Text>
+              <Text style={styles.uploadZoneTitle}>{t("resume.noResume")}</Text>
+              <Text style={styles.uploadZoneSub}>{t("resume.noResumeHint")}</Text>
 
               {uploading ? (
                 <View style={[styles.uploadBtn, { opacity: 0.8 }]}>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.uploadBtnText}>Uploading…</Text>
+                  <Text style={styles.uploadBtnText}>{t("resume.uploading")}</Text>
                 </View>
               ) : (
                 <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload} activeOpacity={0.85}>
                   <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-                  <Text style={styles.uploadBtnText}>Choose PDF</Text>
+                  <Text style={styles.uploadBtnText}>{t("resume.uploadResume")}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -262,7 +262,7 @@ export default function ResumeScreen() {
         {success && (
           <Animated.View entering={ZoomIn.duration(400).springify()} style={styles.successCard}>
             <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-            <Text style={styles.successText}>Resume uploaded successfully!</Text>
+            <Text style={styles.successText}>{t("resume.uploadSuccess")}</Text>
           </Animated.View>
         )}
       </ScrollView>

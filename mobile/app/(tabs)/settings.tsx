@@ -11,6 +11,8 @@ import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
+import { LANGUAGES, type LanguageCode } from "@/constants/i18n";
 import type { ColorPalette } from "@/constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Radius, Spacing } from "@/constants/theme";
@@ -88,12 +90,14 @@ function SectionHeader({ title, index }: { title: string; index: number }) {
 export default function SettingsScreen() {
   const { logout, getToken } = useAuth();
   const { colors: Colors, isDark, toggle } = useTheme();
+  const { t, language, setLanguage } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<{ name?: string; email?: string } | null>(null);
   const [notifJobs, setNotifJobs] = useState(true);
   const [notifApps, setNotifApps] = useState(true);
   const [notifInterview, setNotifInterview] = useState(false);
+  const [showLangModal, setShowLangModal] = useState(false);
   const [showPwModal, setShowPwModal] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -143,7 +147,7 @@ export default function SettingsScreen() {
       if (!res.ok) throw new Error(data.message);
       setShowPwModal(false);
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
-      Alert.alert("Success", "Password changed successfully.");
+      Alert.alert(t("settings.success"), t("settings.passwordChanged"));
     } catch (err: any) {
       setPwError(err.message ?? "Something went wrong.");
     } finally {
@@ -168,7 +172,7 @@ export default function SettingsScreen() {
       await saveItem("auth_user", JSON.stringify(updated));
       setShowEditModal(false);
     } catch (err: any) {
-      Alert.alert("Error", err.message ?? "Could not update profile.");
+        Alert.alert(t("settings.success"), err.message ?? "Could not update profile.");
     } finally {
       setEditLoading(false);
     }
@@ -176,19 +180,12 @@ export default function SettingsScreen() {
 
   async function handleInviteFriends() {
     try {
-      await Share.share({
-        message: "Check out DevMatch — it helps you find and apply to jobs with AI! Download the app and join me.",
-        title: "Join DevMatch",
-      });
+      await Share.share({ message: t("settings.shareMessage"), title: t("settings.shareTitle") });
     } catch {}
   }
 
   function handleDataPrivacy() {
-    Alert.alert(
-      "Data & Privacy",
-      "DevMatch stores your resume and job preferences to provide personalised job matches.\n\nYour data is never sold to third parties. You can delete your account at any time to remove all stored data.\n\nFor questions, contact support@devmatch.app",
-      [{ text: "OK" }]
-    );
+    Alert.alert(t("settings.dataPrivacyTitle"), t("settings.dataPrivacyBody"), [{ text: "OK" }]);
   }
 
   const displayName = user?.name ?? "";
@@ -199,7 +196,7 @@ export default function SettingsScreen() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>{t("settings.title")}</Text>
       </Animated.View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -223,56 +220,56 @@ export default function SettingsScreen() {
             }}
           >
             <Ionicons name="pencil-outline" size={13} color={Colors.blue} />
-            <Text style={styles.editBtnText}>Edit</Text>
+            <Text style={styles.editBtnText}>{t("settings.edit")}</Text>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Account */}
-        <SectionHeader title="Account" index={0} />
+        <SectionHeader title={t("settings.account")} index={0} />
         <Animated.View entering={FadeInDown.delay(160).duration(400)} style={styles.section}>
           <SettingRow
             icon="lock-closed-outline"
-            label="Change Password"
-            sub="Update your account password"
+            label={t("settings.changePassword")}
+            sub={t("settings.changePasswordSub")}
             onPress={() => { setPwError(null); setShowPwModal(true); }}
           />
           <SettingRow
             icon="document-text-outline"
-            label="Upload New Resume"
-            sub="Replace your current CV"
+            label={t("settings.uploadResume")}
+            sub={t("settings.uploadResumeSub")}
             onPress={() => router.push("/(tabs)/resume")}
           />
         </Animated.View>
 
         {/* Notifications */}
-        <SectionHeader title="Notifications" index={1} />
+        <SectionHeader title={t("settings.notifications")} index={1} />
         <Animated.View entering={FadeInDown.delay(220).duration(400)} style={styles.section}>
           <SettingRow
             icon="briefcase-outline"
-            label="Job Matches"
+            label={t("settings.jobMatches")}
             toggle toggleValue={notifJobs}
             onToggle={(v) => { setNotifJobs(v); persistNotifs(v, notifApps, notifInterview); }}
           />
           <SettingRow
             icon="mail-outline"
-            label="Application Updates"
+            label={t("settings.appUpdates")}
             toggle toggleValue={notifApps}
             onToggle={(v) => { setNotifApps(v); persistNotifs(notifJobs, v, notifInterview); }}
           />
           <SettingRow
             icon="calendar-outline"
-            label="Interview Reminders"
+            label={t("settings.interviewReminders")}
             toggle toggleValue={notifInterview}
             onToggle={(v) => { setNotifInterview(v); persistNotifs(notifJobs, notifApps, v); }}
           />
         </Animated.View>
 
         {/* General */}
-        <SectionHeader title="General" index={2} />
+        <SectionHeader title={t("settings.general")} index={2} />
         <Animated.View entering={FadeInDown.delay(280).duration(400)} style={styles.section}>
           <SettingRow
             icon={isDark ? "moon-outline" : "sunny-outline"}
-            label="Dark Mode"
+            label={t("settings.darkMode")}
             toggle
             toggleValue={isDark}
             onToggle={() => {
@@ -280,8 +277,14 @@ export default function SettingsScreen() {
               toggle();
             }}
           />
-          <SettingRow icon="shield-checkmark-outline" label="Data & Privacy" sub="How we use your data" onPress={handleDataPrivacy} />
-          <SettingRow icon="people-outline" label="Invite Friends" sub="Share DevMatch with others" onPress={handleInviteFriends} />
+          <SettingRow
+            icon="language-outline"
+            label={t("settings.language")}
+            sub={LANGUAGES.find((l) => l.code === language)?.native}
+            onPress={() => setShowLangModal(true)}
+          />
+          <SettingRow icon="shield-checkmark-outline" label={t("settings.dataPrivacy")} sub={t("settings.dataPrivacySub")} onPress={handleDataPrivacy} />
+          <SettingRow icon="people-outline" label={t("settings.inviteFriends")} sub={t("settings.inviteFriendsSub")} onPress={handleInviteFriends} />
         </Animated.View>
 
         {/* Sign out */}
@@ -295,26 +298,59 @@ export default function SettingsScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
-            <Text style={styles.logoutText}>Sign Out</Text>
+            <Text style={styles.logoutText}>{t("settings.signOut")}</Text>
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+
+      {/* Language Modal */}
+      <Modal visible={showLangModal} transparent animationType="slide" onRequestClose={() => setShowLangModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: "80%" }]}>
+            <Text style={styles.modalTitle}>{t("settings.language")}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginBottom: Spacing.sm }}>
+              {LANGUAGES.map((lang) => {
+                const isActive = language === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={[styles.langOption, isActive && { backgroundColor: Colors.blue + "12", borderColor: Colors.blue }]}
+                    onPress={async () => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      await setLanguage(lang.code as LanguageCode);
+                      setShowLangModal(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                    <Text style={[styles.langNative, isActive && { color: Colors.blue }]}>{lang.native}</Text>
+                    {isActive && <Ionicons name="checkmark" size={16} color={Colors.blue} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowLangModal(false)}>
+              <Text style={styles.cancelBtnText}>{t("language.confirm")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Change Password Modal */}
       <Modal visible={showPwModal} transparent animationType="slide" onRequestClose={() => setShowPwModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <TextInput style={styles.modalInput} placeholder="Current password" placeholderTextColor={Colors.textMuted} secureTextEntry value={currentPw} onChangeText={setCurrentPw} />
-            <TextInput style={styles.modalInput} placeholder="New password" placeholderTextColor={Colors.textMuted} secureTextEntry value={newPw} onChangeText={setNewPw} />
-            <TextInput style={styles.modalInput} placeholder="Confirm new password" placeholderTextColor={Colors.textMuted} secureTextEntry value={confirmPw} onChangeText={setConfirmPw} />
+            <Text style={styles.modalTitle}>{t("settings.changePassword")}</Text>
+            <TextInput style={styles.modalInput} placeholder={t("settings.currentPassword")} placeholderTextColor={Colors.textMuted} secureTextEntry value={currentPw} onChangeText={setCurrentPw} />
+            <TextInput style={styles.modalInput} placeholder={t("settings.newPassword")} placeholderTextColor={Colors.textMuted} secureTextEntry value={newPw} onChangeText={setNewPw} />
+            <TextInput style={styles.modalInput} placeholder={t("settings.confirmNewPassword")} placeholderTextColor={Colors.textMuted} secureTextEntry value={confirmPw} onChangeText={setConfirmPw} />
             {pwError && <Text style={styles.errorText}>{pwError}</Text>}
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowPwModal(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t("language.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmBtn} onPress={handleChangePassword} disabled={pwLoading}>
-                {pwLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmBtnText}>Save</Text>}
+                {pwLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmBtnText}>{t("language.save")}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -325,14 +361,14 @@ export default function SettingsScreen() {
       <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            <TextInput style={styles.modalInput} placeholder="Display name" placeholderTextColor={Colors.textMuted} value={editName} onChangeText={setEditName} />
+            <Text style={styles.modalTitle}>{t("settings.editProfile")}</Text>
+            <TextInput style={styles.modalInput} placeholder={t("settings.displayName")} placeholderTextColor={Colors.textMuted} value={editName} onChangeText={setEditName} />
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowEditModal(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.cancelBtnText}>{t("language.cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.confirmBtn} onPress={handleEditProfile} disabled={editLoading}>
-                {editLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmBtnText}>Save</Text>}
+                {editLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmBtnText}>{t("language.save")}</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -420,5 +456,13 @@ function makeStyles(Colors: ColorPalette) {
     cancelBtnText: { color: Colors.textSecondary, fontWeight: "600" },
     confirmBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Colors.blue, alignItems: "center" },
     confirmBtnText: { color: "#fff", fontWeight: "700" },
+    langOption: {
+      flexDirection: "row", alignItems: "center", gap: Spacing.md,
+      paddingVertical: 12, paddingHorizontal: Spacing.sm,
+      borderRadius: Radius.md, borderWidth: 1, borderColor: "transparent",
+      marginBottom: 4,
+    },
+    langFlag: { fontSize: 22 },
+    langNative: { flex: 1, fontSize: 15, fontWeight: "600", color: Colors.textPrimary },
   });
 }

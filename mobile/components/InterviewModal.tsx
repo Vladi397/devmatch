@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
@@ -56,9 +57,10 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 function ScoreRing({ score, size = 130 }: { score: number; size?: number }) {
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const color = score >= 75 ? Colors.success : score >= 50 ? Colors.cyan : Colors.danger;
-  const label = score >= 75 ? "Excellent" : score >= 50 ? "Good" : "Needs Work";
+  const label = score >= 75 ? t("interview.excellent") : score >= 50 ? t("interview.good") : t("interview.needsWork");
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -117,10 +119,11 @@ function StarRow({ label, value, index }: { label: string; value: string; index:
 
 function TypeBadge({ type }: { type: Question["type"] }) {
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const map = {
-    behavioral: { color: Colors.cyan, label: "Behavioral" },
-    technical: { color: Colors.blue, label: "Technical" },
-    situational: { color: Colors.warning, label: "Situational" },
+    behavioral: { color: Colors.cyan,    label: t("interview.behavioral") },
+    technical:  { color: Colors.blue,    label: t("interview.technical") },
+    situational:{ color: Colors.warning, label: t("interview.situational") },
   };
   const { color, label } = map[type];
   return (
@@ -134,6 +137,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const { colors: Colors } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -228,7 +232,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
       <View style={styles.root}>
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Mock Interview</Text>
+            <Text style={styles.headerTitle}>{t("interview.title")}</Text>
             {app && (
               <Text style={styles.headerSub} numberOfLines={1}>
                 {app.title} · {app.company}
@@ -249,8 +253,8 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
           {phase === "loading" && (
             <Animated.View entering={FadeInDown.duration(300)} style={styles.centered}>
               <ActivityIndicator color={Colors.blue} size="large" />
-              <Text style={styles.centeredTitle}>Generating interview questions…</Text>
-              <Text style={styles.centeredSub}>Powered by Gemini AI</Text>
+              <Text style={styles.centeredTitle}>{t("interview.generating")}</Text>
+              <Text style={styles.centeredSub}>{t("interview.subtitle")}</Text>
             </Animated.View>
           )}
 
@@ -265,7 +269,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
             <Animated.View entering={FadeInDown.duration(350)} style={{ gap: Spacing.lg }}>
               <View style={styles.progressRow}>
                 <View style={styles.progressPill}>
-                  <Text style={styles.progressText}>Question {currentIndex + 1} of {questions.length}</Text>
+                  <Text style={styles.progressText}>{t("interview.questionOf", { current: currentIndex + 1, total: questions.length })}</Text>
                 </View>
                 <TypeBadge type={currentQ.type} />
               </View>
@@ -282,7 +286,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
               <TextInput
                 style={styles.answerInput}
                 multiline
-                placeholder="Describe your experience or approach..."
+                placeholder={t("interview.yourAnswer")}
                 placeholderTextColor={Colors.textMuted}
                 value={answer}
                 onChangeText={setAnswer}
@@ -296,7 +300,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
                 activeOpacity={0.85}
               >
                 <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                <Text style={styles.submitBtnText}>Submit Answer</Text>
+                <Text style={styles.submitBtnText}>{t("interview.submitAnswer")}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}
@@ -304,8 +308,8 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
           {phase === "evaluating" && (
             <Animated.View entering={FadeInDown.duration(300)} style={styles.centered}>
               <ActivityIndicator color={Colors.cyan} size="large" />
-              <Text style={styles.centeredTitle}>Evaluating your answer…</Text>
-              <Text style={styles.centeredSub}>Applying STAR method coaching</Text>
+              <Text style={styles.centeredTitle}>{t("interview.evaluating")}</Text>
+              <Text style={styles.centeredSub}>{t("interview.starTip")}</Text>
             </Animated.View>
           )}
 
@@ -317,7 +321,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
                 <View style={styles.cardTitleRow}>
                   <View style={styles.cardAccent} />
                   <Ionicons name="chatbubble-outline" size={14} color={Colors.blue} />
-                  <Text style={styles.cardTitle}>Feedback</Text>
+                  <Text style={styles.cardTitle}>{t("interview.feedback")}</Text>
                 </View>
                 <Text style={styles.feedbackText}>{currentResult.feedback}</Text>
               </Animated.View>
@@ -326,7 +330,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
                 <View style={styles.cardTitleRow}>
                   <View style={styles.cardAccent} />
                   <Ionicons name="star-outline" size={14} color={Colors.warning} />
-                  <Text style={styles.cardTitle}>STAR Breakdown</Text>
+                  <Text style={styles.cardTitle}>{t("interview.starBreakdown")}</Text>
                 </View>
                 <StarRow label="S" value={currentResult.starBreakdown.situation} index={0} />
                 <StarRow label="T" value={currentResult.starBreakdown.task} index={1} />
@@ -342,7 +346,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
                 >
                   <View style={styles.cardAccent} />
                   <Ionicons name="sparkles-outline" size={14} color={Colors.cyan} />
-                  <Text style={[styles.cardTitle, { flex: 1 }]}>Improved Answer</Text>
+                  <Text style={[styles.cardTitle, { flex: 1 }]}>{t("interview.improvedAnswer")}</Text>
                   <Ionicons name={improvedExpanded ? "chevron-up" : "chevron-down"} size={14} color={Colors.textMuted} />
                 </TouchableOpacity>
                 {improvedExpanded && (
@@ -357,7 +361,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
 
               <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
                 <Text style={styles.nextBtnText}>
-                  {currentIndex + 1 >= questions.length ? "View Summary" : "Next Question"}
+                  {currentIndex + 1 >= questions.length ? t("interview.viewSummary") : t("interview.nextQuestion")}
                 </Text>
                 <Ionicons name="arrow-forward" size={16} color="#fff" />
               </TouchableOpacity>
@@ -366,7 +370,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
 
           {phase === "summary" && (
             <Animated.View entering={FadeInDown.duration(400)} style={{ gap: Spacing.lg }}>
-              <Text style={styles.summaryHeading}>Interview Complete</Text>
+              <Text style={styles.summaryHeading}>{t("interview.summaryTitle")}</Text>
 
               <ScoreRing score={overallScore} size={150} />
 
@@ -399,7 +403,7 @@ export default function InterviewModal({ app, onClose }: { app: AppSnippet | nul
               </Animated.View>
 
               <TouchableOpacity style={styles.closeFullBtn} onPress={onClose} activeOpacity={0.85}>
-                <Text style={styles.closeFullBtnText}>Close</Text>
+                <Text style={styles.closeFullBtnText}>{t("interview.close")}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}

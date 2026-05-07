@@ -4,6 +4,8 @@ import { router } from "expo-router";
 import { Platform } from "react-native";
 import { API_URL } from "@/constants/api";
 
+const LANG_KEY = "app_language";
+
 const TOKEN_KEY = "auth_token";
 const USER_KEY = "auth_user";
 
@@ -47,7 +49,8 @@ export function useAuth() {
       if (!res.ok) throw new Error(data.message ?? "Login failed");
       await saveItem(TOKEN_KEY, data.token);
       await saveItem(USER_KEY, JSON.stringify(data.user));
-      router.replace("/(tabs)/dashboard");
+      const lang = await getItem(LANG_KEY);
+      router.replace(lang ? "/(tabs)/dashboard" : ("/language" as any));
     } catch (err: any) {
       setError(err.message ?? "Something went wrong.");
     } finally {
@@ -68,7 +71,7 @@ export function useAuth() {
       if (!res.ok) throw new Error(data.message ?? "Registration failed");
       await saveItem(TOKEN_KEY, data.token);
       await saveItem(USER_KEY, JSON.stringify(data.user));
-      router.replace("/(tabs)/dashboard");
+      router.replace("/language" as any);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong.");
     } finally {
