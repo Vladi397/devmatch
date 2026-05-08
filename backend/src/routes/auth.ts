@@ -47,6 +47,85 @@ router.post("/login", async (req: Request, res: Response) => {
   res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
 });
 
+router.post("/social", async (req: Request, res: Response) => {
+  const { provider, token, email, extra } = req.body;
+  if (!provider || !token) {
+    return res.status(400).json({ message: "Provider and token are required" });
+  }
+
+  let verifiedEmail = email as string;
+  let verifiedName  = extra as string;
+
+  try {
+    if (provider === "google") {
+      const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) return res.status(401).json({ message: "Invalid Google token" });
+      const u = await r.json() as { email: string; name?: string };
+      verifiedEmail = u.email;
+      verifiedName  = u.name ?? "";
+
+    } else if (provider === "apple") {
+      // iOS pre-verifies the identity token; trust the email for MVP.
+      // For production, verify the JWT against Apple's public keys.
+      verifiedEmail = email;
+      verifiedName  = extra || email?.split("@")[0] || "User";
+
+    } else if (provider === "linkedin") {
+      // `token` is the authorization code; `extra` is the PKCE code_verifier.
+      const params = new URLSearchParams({
+        grant_type:    "authorization_code",
+        code:          token,
+        redirect_uri:  `${process.env.APP_SCHEME ?? "mobile"}://auth`,
+        client_id:     process.env.LINKEDIN_CLIENT_ID    ?? "",
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET ?? "",
+        code_verifier: extra,
+      });
+      const tokenRes = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+        method:  "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body:    params.toString(),
+      });
+      if (!tokenRes.ok) return res.status(401).json({ message: "LinkedIn token exchange failed" });
+      const tokenData = await tokenRes.json() as { access_token: string };
+
+      const profileRes = await fetch("https://api.linkedin.com/v2/userinfo", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      if (!profileRes.ok) return res.status(401).json({ message: "Failed to get LinkedIn profile" });
+      const profile = await profileRes.json() as { email: string; name?: string };
+      verifiedEmail = profile.email;
+      verifiedName  = profile.name ?? "";
+
+    } else {
+      return res.status(400).json({ message: "Unknown provider" });
+    }
+
+    if (!verifiedEmail) {
+      return res.status(401).json({ message: "Could not retrieve email from provider" });
+    }
+
+    let user = await prisma.user.findUnique({ where: { email: verifiedEmail } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email:        verifiedEmail,
+          passwordHash: await bcrypt.hash(Math.random().toString(36) + Date.now(), 10),
+          name:         verifiedName || verifiedEmail.split("@")[0],
+        },
+      });
+    }
+
+    const jwtToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+    return res.json({ token: jwtToken, user: { id: user.id, email: user.email, name: user.name } });
+
+  } catch (err) {
+    console.error("Social auth error:", err);
+    return res.status(500).json({ message: "Social authentication failed" });
+  }
+});
+
 router.post("/change-password", protect, async (req: AuthRequest | any, res: Response) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword)

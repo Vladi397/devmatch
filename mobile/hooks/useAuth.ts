@@ -79,6 +79,13 @@ export function useAuth() {
     }
   }
 
+  async function socialLogin(token: string, user: { id: string; email: string; name: string }) {
+    await saveItem(TOKEN_KEY, token);
+    await saveItem(USER_KEY, JSON.stringify(user));
+    const lang = await getItem(LANG_KEY);
+    router.replace(lang ? "/(tabs)/dashboard" : ("/language" as any));
+  }
+
   async function logout() {
     await removeItem(TOKEN_KEY);
     await removeItem(USER_KEY);
@@ -89,5 +96,5 @@ export function useAuth() {
     return await getItem(TOKEN_KEY);
   }
 
-  return { login, register, logout, getToken, loading, error };
+  return { login, register, socialLogin, logout, getToken, loading, error };
 }

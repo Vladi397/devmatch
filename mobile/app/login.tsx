@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
+  View, Text, Pressable, StyleSheet,
+  KeyboardAvoidingView, Platform, ScrollView,
+  ActivityIndicator, StatusBar, Alert,
 } from "react-native";
 import Animated, {
-  ZoomIn, FadeInDown,
+  ZoomIn, FadeInDown, FadeInUp,
   useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming, withDelay, Easing,
+  withRepeat, withSequence, withTiming, withDelay, withSpring, Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Link } from "expo-router";
@@ -14,16 +15,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { AuthInput } from "@/components/AuthInput";
 import { useAuth } from "@/hooks/useAuth";
+import { useSocialAuth } from "@/hooks/useSocialAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 
+// ─── Animated background blob ────────────────────────────────────────────────
 function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
   const sc = useSharedValue(1);
   useEffect(() => {
     sc.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(1.15, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
       withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
     ), -1, false));
   }, []);
@@ -31,37 +34,122 @@ function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
   return <Animated.View style={[style, animStyle]} />;
 }
 
+// ─── 3D social button ────────────────────────────────────────────────────────
+function SocialBtn({ icon, label, onPress, disabled }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const { colors: Colors } = useTheme();
+  const scale = useSharedValue(1);
+  const rotX  = useSharedValue(0);
+  const anim  = useAnimatedStyle(() => ({
+    transform: [{ perspective: 600 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
+  }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.88, { damping: 14 }); rotX.value = withSpring(10, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1,    { damping: 14 }); rotX.value = withSpring(0,  { damping: 12 }); }}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
+      disabled={disabled}
+      style={{ opacity: disabled ? 0.45 : 1 }}
+    >
+      <Animated.View style={[{
+        width: 52, height: 52, borderRadius: 26,
+        backgroundColor: Colors.bgInput,
+        borderWidth: 1.5, borderColor: Colors.border,
+        alignItems: "center", justifyContent: "center",
+        shadowColor: Colors.blue, shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18, shadowRadius: 8, elevation: 3,
+      }, anim]}>
+        <Ionicons name={icon} size={22} color={Colors.textPrimary} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// ─── Divider ─────────────────────────────────────────────────────────────────
+function OrDivider({ label, Colors, styles }: { label: string; Colors: ColorPalette; styles: any }) {
+  return (
+    <View style={styles.dividerRow}>
+      <View style={[styles.dividerLine, { backgroundColor: Colors.border }]} />
+      <Text style={[styles.dividerText, { color: Colors.textMuted }]}>{label}</Text>
+      <View style={[styles.dividerLine, { backgroundColor: Colors.border }]} />
+    </View>
+  );
+}
+
+// ─── Primary button with 3D press ────────────────────────────────────────────
+function PrimaryBtn({ label, onPress, loading, Colors, styles }: {
+  label: string; onPress: () => void; loading: boolean;
+  Colors: ColorPalette; styles: any;
+}) {
+  const scale = useSharedValue(1);
+  const rotX  = useSharedValue(0);
+  const anim  = useAnimatedStyle(() => ({
+    transform: [{ perspective: 700 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
+  }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.96, { damping: 14 }); rotX.value = withSpring(5, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1,   { damping: 14 }); rotX.value = withSpring(0, { damping: 12 }); }}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPress(); }}
+      disabled={loading}
+    >
+      <Animated.View style={[styles.btnPrimary, { backgroundColor: Colors.blue, opacity: loading ? 0.75 : 1 }, anim]}>
+        {loading
+          ? <ActivityIndicator color="#fff" size="small" />
+          : <Text style={styles.btnPrimaryText}>{label}</Text>
+        }
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// ─── Screen ──────────────────────────────────────────────────────────────────
 export default function LoginScreen() {
-  const { login, loading, error } = useAuth();
+  const { login, socialLogin, loading, error } = useAuth();
   const { colors: Colors, isDark } = useTheme();
   const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [socialLoading, setSocialLoading] = useState(false);
 
-  function validate(em: string, pw: string) {
-    const errors: { email?: string; password?: string } = {};
-    if (!em.trim()) errors.email = t("auth.emailRequired");
-    else if (!/\S+@\S+\.\S+/.test(em)) errors.email = t("auth.validEmail");
-    if (!pw) errors.password = t("auth.passwordRequired");
-    else if (pw.length < 6) errors.password = t("auth.minPassword");
-    return errors;
+  const { signInWithGoogle, signInWithApple, signInWithLinkedIn } = useSocialAuth({
+    onSuccess: (token, user) => socialLogin(token, user),
+    onError:   (msg) => Alert.alert("Sign In Failed", msg),
+    onLoading: setSocialLoading,
+  });
+
+  function validate() {
+    const errs: { email?: string; password?: string } = {};
+    if (!email.trim()) errs.email = t("auth.emailRequired");
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = t("auth.validEmail");
+    if (!password) errs.password = t("auth.passwordRequired");
+    else if (password.length < 6) errs.password = t("auth.minPassword");
+    return errs;
   }
 
   function handleLogin() {
-    const errs = validate(email, password);
+    const errs = validate();
     if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
     setFieldErrors({});
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     login(email, password);
   }
+
+  const anyLoading = loading || socialLoading;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+      {/* Aurora background */}
       <AnimBlob style={[styles.blob, styles.blobTL]} delay={0} />
       <AnimBlob style={[styles.blob, styles.blobBR]} delay={800} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1400} />
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
         <ScrollView
@@ -69,73 +157,78 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={ZoomIn.duration(500).springify()} style={styles.logoWrap}>
+          {/* Logo */}
+          <Animated.View entering={ZoomIn.duration(550).springify()} style={styles.logoWrap}>
             <DevMatchLogo size="md" />
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.card}>
+          {/* Card */}
+          <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.card}>
+
             <Text style={styles.cardTitle}>{t("auth.welcomeBack")}</Text>
             <Text style={styles.cardSubtitle}>{t("auth.signInSubtitle")}</Text>
 
-            <AuthInput
-              icon="mail-outline"
-              placeholder="your.name@example.com"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={(v) => {
-                setEmail(v);
-                if (fieldErrors.email) setFieldErrors((e) => ({ ...e, email: undefined }));
-              }}
-              error={fieldErrors.email}
-            />
+            <View style={styles.fields}>
+              <AuthInput
+                icon="mail-outline"
+                placeholder="your.name@example.com"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={(v) => { setEmail(v); if (fieldErrors.email) setFieldErrors(e => ({ ...e, email: undefined })); }}
+                error={fieldErrors.email}
+              />
+              <AuthInput
+                icon="lock-closed-outline"
+                placeholder={t("auth.password")}
+                isPassword
+                value={password}
+                onChangeText={(v) => { setPassword(v); if (fieldErrors.password) setFieldErrors(e => ({ ...e, password: undefined })); }}
+                error={fieldErrors.password}
+              />
+            </View>
 
-            <AuthInput
-              icon="lock-closed-outline"
-              placeholder={t("auth.password")}
-              isPassword
-              value={password}
-              onChangeText={(v) => {
-                setPassword(v);
-                if (fieldErrors.password) setFieldErrors((e) => ({ ...e, password: undefined }));
-              }}
-              error={fieldErrors.password}
-            />
-
-            <TouchableOpacity style={styles.forgotRow}>
-              <Text style={styles.forgotText}>{t("auth.forgotPassword")}</Text>
-            </TouchableOpacity>
+            <Pressable style={styles.forgotRow}>
+              <Text style={[styles.forgotText, { color: Colors.blue }]}>{t("auth.forgotPassword")}</Text>
+            </Pressable>
 
             {error ? (
-              <View style={styles.apiError}>
+              <Animated.View entering={FadeInDown.duration(250)} style={styles.apiError}>
                 <Ionicons name="alert-circle-outline" size={15} color={Colors.danger} />
-                <Text style={styles.apiErrorText}>{error}</Text>
-              </View>
+                <Text style={[styles.apiErrorText, { color: Colors.danger }]}>{error}</Text>
+              </Animated.View>
             ) : null}
 
-            <TouchableOpacity
-              style={[styles.btnPrimary, loading && { opacity: 0.7 }]}
+            {/* Sign in button */}
+            <PrimaryBtn
+              label={t("auth.signIn")}
               onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.btnPrimaryText}>{t("auth.signIn")}</Text>
-              )}
-            </TouchableOpacity>
+              loading={anyLoading}
+              Colors={Colors}
+              styles={styles}
+            />
 
-            <View style={styles.registerRow}>
-              <Text style={styles.registerText}>{t("auth.noAccount")} </Text>
+            {/* Register link */}
+            <View style={styles.switchRow}>
+              <Text style={[styles.switchText, { color: Colors.textSecondary }]}>{t("auth.noAccount")} </Text>
               <Link href="/register" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.registerLink}>{t("auth.signUp")}</Text>
-                </TouchableOpacity>
+                <Pressable>
+                  <Text style={[styles.switchLink, { color: Colors.cyan }]}>{t("auth.signUp")}</Text>
+                </Pressable>
               </Link>
             </View>
+
+            {/* Social auth */}
+            <OrDivider label="Or continue with" Colors={Colors} styles={styles} />
+
+            <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.socialRow}>
+              <SocialBtn icon="logo-google"   label="Google"   onPress={signInWithGoogle}   disabled={anyLoading} />
+              <SocialBtn icon="logo-apple"    label="Apple"    onPress={signInWithApple}    disabled={anyLoading} />
+              <SocialBtn icon="logo-linkedin" label="LinkedIn" onPress={signInWithLinkedIn} disabled={anyLoading} />
+            </Animated.View>
+
           </Animated.View>
 
-          <Animated.Text entering={FadeInDown.delay(350).duration(400)} style={styles.hint}>
+          <Animated.Text entering={FadeInDown.delay(400).duration(400)} style={[styles.hint, { color: Colors.textMuted }]}>
             Demo: demo@jobai.com / password123
           </Animated.Text>
         </ScrollView>
@@ -144,41 +237,69 @@ export default function LoginScreen() {
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
 function makeStyles(Colors: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: Colors.bg },
     flex: { flex: 1 },
     scroll: { flexGrow: 1, paddingHorizontal: Spacing.xl, paddingBottom: 40 },
-    blob: { position: "absolute", borderRadius: 999, opacity: 0.15 },
-    blobTL: { width: 300, height: 300, backgroundColor: Colors.blue, top: -100, left: -100 },
-    blobBR: { width: 250, height: 250, backgroundColor: Colors.cyan + "55", bottom: 50, right: -80 },
-    logoWrap: { alignItems: "center", marginTop: 80, marginBottom: 40 },
+
+    blob: { position: "absolute", borderRadius: 999 },
+    blobTL:  { width: 320, height: 320, backgroundColor: Colors.blue,  opacity: 0.13, top: -130, left: -110 },
+    blobBR:  { width: 260, height: 260, backgroundColor: Colors.cyan,  opacity: 0.08, bottom: 40, right: -100 },
+    blobMid: { width: 180, height: 180, backgroundColor: Colors.pink,  opacity: 0.07, top: "40%", left: -60 },
+
+    logoWrap: { alignItems: "center", marginTop: 72, marginBottom: 28 },
+
     card: {
-      backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
-      borderWidth: 1, borderColor: Colors.border, padding: Spacing.xxl, gap: 0,
-      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 6,
+      backgroundColor: Colors.bgCard,
+      borderRadius: Radius.xl,
+      borderWidth: 1.5,
+      borderColor: Colors.blue + "70",
+      paddingHorizontal: Spacing.xxl,
+      paddingTop: Spacing.xxl,
+      paddingBottom: Spacing.xl,
+      shadowColor: Colors.blue,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.22,
+      shadowRadius: 24,
+      elevation: 8,
     },
-    cardTitle: { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
+
+    cardTitle:    { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
     cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
-    forgotRow: { alignSelf: "flex-end", marginBottom: Spacing.lg, marginTop: -4 },
-    forgotText: { fontSize: 13, color: Colors.blue, fontWeight: "500" },
+
+    fields: { gap: 0, marginBottom: 4 },
+
+    forgotRow:  { alignSelf: "flex-end", marginBottom: Spacing.lg, marginTop: -2 },
+    forgotText: { fontSize: 13, fontWeight: "500" },
+
     apiError: {
       flexDirection: "row", alignItems: "center", gap: 8,
       backgroundColor: Colors.danger + "18", borderRadius: Radius.sm,
       borderWidth: 1, borderColor: Colors.danger + "33",
       padding: 10, marginBottom: Spacing.md,
     },
-    apiErrorText: { color: Colors.danger, fontSize: 12, flex: 1 },
+    apiErrorText: { fontSize: 12, flex: 1 },
+
     btnPrimary: {
-      backgroundColor: Colors.blue, borderRadius: Radius.full,
-      paddingVertical: 15, alignItems: "center",
-      marginBottom: Spacing.lg, marginTop: Spacing.sm,
-      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 6,
+      borderRadius: Radius.full, paddingVertical: 16,
+      alignItems: "center", marginBottom: Spacing.lg,
+      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.45, shadowRadius: 16, elevation: 6,
     },
     btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
-    registerRow: { flexDirection: "row", justifyContent: "center" },
-    registerText: { fontSize: 13, color: Colors.textSecondary },
-    registerLink: { fontSize: 13, color: Colors.cyan, fontWeight: "600" },
-    hint: { marginTop: Spacing.xl, textAlign: "center", fontSize: 11, color: Colors.textMuted },
+
+    switchRow: { flexDirection: "row", justifyContent: "center", marginBottom: Spacing.lg },
+    switchText: { fontSize: 13 },
+    switchLink: { fontSize: 13, fontWeight: "700" },
+
+    dividerRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.lg },
+    dividerLine: { flex: 1, height: 1 },
+    dividerText: { fontSize: 12, fontWeight: "500" },
+
+    socialRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.xl },
+
+    hint: { marginTop: Spacing.xl, textAlign: "center", fontSize: 11 },
   });
 }
