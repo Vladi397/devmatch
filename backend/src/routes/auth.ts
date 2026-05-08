@@ -1,10 +1,19 @@
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 import { prisma } from "../lib/prisma";
 import { protect, AuthRequest } from "../middleware/auth";
 
 const router = Router();
+
+// In-memory OTP store — expires in 15 minutes
+const otpStore = new Map<string, { otp: string; expiry: number }>();
+
+const mailer = nodemailer.createTransport({
+  service: "gmail",
+  auth: { user: process.env.EMAIL_USER ?? "", pass: process.env.EMAIL_PASS ?? "" },
+});
 
 router.post("/register", async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
@@ -150,6 +159,58 @@ router.patch("/profile", protect, async (req: AuthRequest | any, res: Response) 
     data: { name },
   });
   res.json({ user: { id: user.id, email: user.email, name: user.name } });
+});
+
+router.post("/forgot-password", async (req: Request, res: Response) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: "Email is required" });
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  // Always respond the same way to prevent email enumeration
+  if (!user) return res.json({ message: "If that email is registered, a code has been sent." });
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  otpStore.set(email, { otp, expiry: Date.now() + 15 * 60 * 1000 });
+
+  try {
+    await mailer.sendMail({
+      from: `"DevMatch" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Your DevMatch password reset code",
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#0f1117;border:1.5px solid rgba(59,130,246,0.4);border-radius:16px">
+          <h2 style="color:#3b82f6;margin:0 0 8px">Reset your password</h2>
+          <p style="color:#9ca3af;margin:0 0 24px">Use the code below to reset your DevMatch password. It expires in <strong style="color:#fff">15 minutes</strong>.</p>
+          <div style="background:#1e2030;border:1.5px solid rgba(59,130,246,0.3);border-radius:12px;padding:24px;text-align:center;letter-spacing:14px;font-size:38px;font-weight:800;color:#60a5fa">${otp}</div>
+          <p style="color:#6b7280;font-size:12px;margin:24px 0 0">If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error("Email send failed:", err);
+    return res.status(500).json({ message: "Failed to send reset email. Check EMAIL_USER / EMAIL_PASS in .env" });
+  }
+
+  res.json({ message: "If that email is registered, a code has been sent." });
+});
+
+router.post("/reset-password", async (req: Request, res: Response) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword)
+    return res.status(400).json({ message: "Email, code and new password are required" });
+
+  const stored = otpStore.get(email);
+  if (!stored || stored.otp !== String(otp) || Date.now() > stored.expiry)
+    return res.status(400).json({ message: "Invalid or expired code" });
+
+  if ((newPassword as string).length < 6)
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({ where: { email }, data: { passwordHash } });
+  otpStore.delete(email);
+
+  res.json({ message: "Password reset successfully" });
 });
 
 export default router;

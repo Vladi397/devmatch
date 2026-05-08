@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  View, Text, Pressable, StyleSheet,
+  View, Text, Pressable, StyleSheet, Modal,
   KeyboardAvoidingView, Platform, ScrollView,
   ActivityIndicator, StatusBar, Alert,
 } from "react-native";
@@ -16,6 +16,7 @@ import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { AuthInput } from "@/components/AuthInput";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocialAuth } from "@/hooks/useSocialAuth";
+import { API_URL } from "@/constants/api";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
@@ -107,6 +108,143 @@ function PrimaryBtn({ label, onPress, loading, Colors, styles }: {
   );
 }
 
+// ─── Forgot-password modal ────────────────────────────────────────────────────
+function ForgotModal({ visible, onClose, Colors, styles }: {
+  visible: boolean; onClose: () => void;
+  Colors: ColorPalette; styles: any;
+}) {
+  const [step, setStep]       = useState<"email" | "reset">("email");
+  const [email, setEmail]     = useState("");
+  const [code, setCode]       = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
+
+  function resetState() {
+    setStep("email"); setEmail(""); setCode(""); setNewPass(""); setError("");
+  }
+
+  async function sendCode() {
+    if (!email.trim()) { setError("Enter your email address."); return; }
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json() as { message: string };
+      if (res.ok) setStep("reset");
+      else setError(data.message ?? "Something went wrong.");
+    } catch { setError("Network error. Please try again."); }
+    finally { setLoading(false); }
+  }
+
+  async function submitReset() {
+    if (!code.trim() || !newPass) { setError("Fill in all fields."); return; }
+    if (newPass.length < 6) { setError("Password must be at least 6 characters."); return; }
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(`${API_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: code, newPassword: newPass }),
+      });
+      const data = await res.json() as { message: string };
+      if (res.ok) {
+        Alert.alert("Password Reset", "Your password has been updated. You can now sign in.");
+        resetState(); onClose();
+      } else setError(data.message ?? "Something went wrong.");
+    } catch { setError("Network error. Please try again."); }
+    finally { setLoading(false); }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { resetState(); onClose(); }}>
+      <Pressable style={styles.modalOverlay} onPress={() => { resetState(); onClose(); }}>
+        <Animated.View
+          entering={FadeInDown.duration(300).springify()}
+          style={[styles.modalCard, { backgroundColor: Colors.bgCard, borderColor: Colors.blue + "70" }]}
+          onStartShouldSetResponder={() => true}
+        >
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, { color: Colors.textPrimary }]}>
+              {step === "email" ? "Forgot Password" : "Enter Reset Code"}
+            </Text>
+            <Pressable onPress={() => { resetState(); onClose(); }} style={styles.modalClose} hitSlop={10}>
+              <Ionicons name="close" size={20} color={Colors.textMuted} />
+            </Pressable>
+          </View>
+
+          <Text style={[styles.modalSubtitle, { color: Colors.textSecondary }]}>
+            {step === "email"
+              ? "Enter your email and we'll send a 6-digit reset code."
+              : `Code sent to ${email}. Enter it below with your new password.`}
+          </Text>
+
+          {error ? (
+            <View style={[styles.apiError, { marginTop: 0, marginBottom: Spacing.md }]}>
+              <Ionicons name="alert-circle-outline" size={14} color={Colors.danger} />
+              <Text style={[styles.apiErrorText, { color: Colors.danger }]}>{error}</Text>
+            </View>
+          ) : null}
+
+          {step === "email" ? (
+            <>
+              <AuthInput
+                icon="mail-outline"
+                placeholder="your.name@example.com"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={(v) => { setEmail(v); setError(""); }}
+              />
+              <Pressable
+                onPress={sendCode}
+                disabled={loading}
+                style={[styles.btnPrimary, { backgroundColor: Colors.blue, opacity: loading ? 0.75 : 1, marginTop: Spacing.md }]}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.btnPrimaryText}>Send Code</Text>}
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <AuthInput
+                icon="keypad-outline"
+                placeholder="6-digit code"
+                keyboardType="number-pad"
+                value={code}
+                onChangeText={(v) => { setCode(v); setError(""); }}
+              />
+              <AuthInput
+                icon="lock-closed-outline"
+                placeholder="New password"
+                isPassword
+                value={newPass}
+                onChangeText={(v) => { setNewPass(v); setError(""); }}
+              />
+              <Pressable
+                onPress={submitReset}
+                disabled={loading}
+                style={[styles.btnPrimary, { backgroundColor: Colors.blue, opacity: loading ? 0.75 : 1, marginTop: Spacing.md }]}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.btnPrimaryText}>Reset Password</Text>}
+              </Pressable>
+              <Pressable onPress={() => { setStep("email"); setError(""); }} style={styles.modalBack}>
+                <Text style={{ color: Colors.blue, fontSize: 13 }}>← Change email</Text>
+              </Pressable>
+            </>
+          )}
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function LoginScreen() {
   const { login, socialLogin, loading, error } = useAuth();
@@ -117,6 +255,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [socialLoading, setSocialLoading] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const { signInWithGoogle, signInWithApple, signInWithLinkedIn } = useSocialAuth({
     onSuccess: (token, user) => socialLogin(token, user),
@@ -187,7 +326,7 @@ export default function LoginScreen() {
               />
             </View>
 
-            <Pressable style={styles.forgotRow}>
+            <Pressable style={styles.forgotRow} onPress={() => setForgotOpen(true)}>
               <Text style={[styles.forgotText, { color: Colors.blue }]}>{t("auth.forgotPassword")}</Text>
             </Pressable>
 
@@ -233,6 +372,13 @@ export default function LoginScreen() {
           </Animated.Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ForgotModal
+        visible={forgotOpen}
+        onClose={() => setForgotOpen(false)}
+        Colors={Colors}
+        styles={styles}
+      />
     </View>
   );
 }
@@ -301,5 +447,22 @@ function makeStyles(Colors: ColorPalette) {
     socialRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.xl },
 
     hint: { marginTop: Spacing.xl, textAlign: "center", fontSize: 11 },
+
+    modalOverlay: {
+      flex: 1, backgroundColor: "rgba(0,0,0,0.65)",
+      justifyContent: "center", alignItems: "center",
+      paddingHorizontal: Spacing.xl,
+    },
+    modalCard: {
+      width: "100%", borderRadius: Radius.xl, borderWidth: 1.5,
+      paddingHorizontal: Spacing.xxl, paddingTop: Spacing.xl, paddingBottom: Spacing.xxl,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.4, shadowRadius: 24, elevation: 12,
+    },
+    modalHeader:   { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+    modalTitle:    { fontSize: 18, fontWeight: "800" },
+    modalSubtitle: { fontSize: 13, marginBottom: Spacing.lg, lineHeight: 19 },
+    modalClose:    { padding: 4 },
+    modalBack:     { alignSelf: "center", marginTop: Spacing.md, paddingVertical: 4 },
   });
 }
