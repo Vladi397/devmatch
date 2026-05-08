@@ -161,12 +161,14 @@ function ForgotModal({ visible, onClose, Colors, styles }: {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { resetState(); onClose(); }}>
-      <Pressable style={styles.modalOverlay} onPress={() => { resetState(); onClose(); }}>
-        <Animated.View
-          entering={FadeInDown.duration(300).springify()}
-          style={[styles.modalCard, { backgroundColor: Colors.bgCard, borderColor: Colors.blue + "70" }]}
-          onStartShouldSetResponder={() => true}
-        >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+        <View style={styles.modalOverlay} pointerEvents="box-none">
+          {/* Backdrop — tapping it closes the modal */}
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => { resetState(); onClose(); }} />
+          <Animated.View
+            entering={FadeInDown.duration(300).springify()}
+            style={[styles.modalCard, { backgroundColor: Colors.bgCard, borderColor: Colors.blue + "70" }]}
+          >
           {/* Header */}
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: Colors.textPrimary }]}>
@@ -239,8 +241,9 @@ function ForgotModal({ visible, onClose, Colors, styles }: {
               </Pressable>
             </>
           )}
-        </Animated.View>
-      </Pressable>
+          </Animated.View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -451,7 +454,7 @@ function makeStyles(Colors: ColorPalette) {
     modalOverlay: {
       flex: 1, backgroundColor: "rgba(0,0,0,0.65)",
       justifyContent: "center", alignItems: "center",
-      paddingHorizontal: Spacing.xl,
+      paddingHorizontal: Spacing.xl, paddingVertical: Spacing.xl,
     },
     modalCard: {
       width: "100%", borderRadius: Radius.xl, borderWidth: 1.5,
