@@ -105,11 +105,24 @@ function openJob(url: string) {
 
 function AnimBtn({ style, onPress, children }: { style: any; onPress: () => void; children: React.ReactNode }) {
   const scale = useSharedValue(1);
-  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const rotX  = useSharedValue(0);
+  const anim = useAnimatedStyle(() => ({
+    transform: [
+      { perspective: 600 },
+      { scale: scale.value },
+      { rotateX: `${rotX.value}deg` },
+    ],
+  }));
   return (
     <Pressable
-      onPressIn={() => { scale.value = withSpring(0.93, { damping: 15 }); }}
-      onPressOut={() => { scale.value = withSpring(1, { damping: 15 }); }}
+      onPressIn={() => {
+        scale.value = withSpring(0.92, { damping: 14 });
+        rotX.value  = withSpring(8,    { damping: 12 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 14 });
+        rotX.value  = withSpring(0, { damping: 12 });
+      }}
       onPress={onPress}
     >
       <Animated.View style={[style, anim]}>{children}</Animated.View>
@@ -208,8 +221,15 @@ function makeStyles(Colors: ColorPalette) {
       borderRadius: Radius.lg,
       borderWidth: 1,
       borderColor: Colors.border,
+      borderTopWidth: 2,
+      borderTopColor: Colors.blue + "55",
       padding: Spacing.lg,
       marginBottom: Spacing.md,
+      shadowColor: Colors.blue,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+      elevation: 3,
     },
     header: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.md, gap: Spacing.md },
     headerInfo: { flex: 1 },
@@ -226,15 +246,16 @@ function makeStyles(Colors: ColorPalette) {
     salary: { fontSize: 12, color: Colors.success, fontWeight: "600" },
     chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     chip: {
-      backgroundColor: Colors.bgChip, borderRadius: Radius.full,
-      borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 10, paddingVertical: 4,
+      backgroundColor: Colors.cyan + "10", borderRadius: Radius.full,
+      borderWidth: 1, borderColor: Colors.cyan + "35", paddingHorizontal: 10, paddingVertical: 4,
     },
-    chipText: { fontSize: 11, color: Colors.cyan, fontWeight: "500" },
+    chipText: { fontSize: 11, color: Colors.cyan, fontWeight: "600" },
 
     actions: { flexDirection: "row", gap: Spacing.sm, alignItems: "center" },
     btnView: {
       flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: 5, backgroundColor: Colors.blue, borderRadius: Radius.md, paddingVertical: 10,
+      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 4,
     },
     btnViewText: { color: "#fff", fontSize: 13, fontWeight: "700" },
     btnSave: {

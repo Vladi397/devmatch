@@ -1,9 +1,13 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   StatusBar, Dimensions,
 } from "react-native";
-import Animated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated";
+import Animated, {
+  FadeInDown, FadeInUp, ZoomIn,
+  useSharedValue, useAnimatedStyle,
+  withRepeat, withSequence, withTiming, withDelay, Easing,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,11 +20,32 @@ import { Radius, Spacing } from "@/constants/theme";
 
 const { height } = Dimensions.get("window");
 
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.12, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, animStyle]} />;
+}
+
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const { colors: Colors, isDark } = useTheme();
   const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
+  const logoFloat = useSharedValue(0);
+  useEffect(() => {
+    logoFloat.value = withRepeat(withSequence(
+      withTiming(-9, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+      withTiming( 0, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false);
+  }, []);
+  const logoFloatStyle = useAnimatedStyle(() => ({ transform: [{ translateY: logoFloat.value }] }));
 
   const FEATURES = [
     {
@@ -57,13 +82,13 @@ export default function WelcomeScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      <View style={[styles.blob, styles.blobTop]} />
-      <View style={[styles.blob, styles.blobMid]} />
-      <View style={[styles.blob, styles.blobBot]} />
+      <AnimBlob style={[styles.blob, styles.blobTop]} delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1000} />
+      <AnimBlob style={[styles.blob, styles.blobBot]} delay={500} />
 
       <View style={[styles.inner, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
 
-        <Animated.View entering={ZoomIn.duration(600).springify()} style={styles.logoWrap}>
+        <Animated.View entering={ZoomIn.duration(600).springify()} style={[styles.logoWrap, logoFloatStyle]}>
           <DevMatchLogo size="lg" />
         </Animated.View>
 
@@ -78,7 +103,7 @@ export default function WelcomeScreen() {
             <Animated.View
               key={f.title}
               entering={FadeInDown.delay(380 + i * 90).duration(380).springify()}
-              style={styles.featureRow}
+              style={[styles.featureRow, { borderLeftColor: f.color + "90", borderLeftWidth: 3 }]}
             >
               <View style={[styles.featureIcon, { backgroundColor: f.color + "20" }]}>
                 <Ionicons name={f.icon} size={18} color={f.color} />
@@ -135,6 +160,7 @@ function makeStyles(Colors: ColorPalette) {
       flexDirection: "row", alignItems: "center", gap: Spacing.md,
       backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
       borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
     },
     featureIcon: { width: 40, height: 40, borderRadius: Radius.md, alignItems: "center", justifyContent: "center", flexShrink: 0 },
     featureText: { flex: 1, gap: 2 },
@@ -145,6 +171,7 @@ function makeStyles(Colors: ColorPalette) {
     btnPrimary: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: 8, backgroundColor: Colors.blue, borderRadius: Radius.full, paddingVertical: 16,
+      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 6,
     },
     btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
     btnSecondary: { alignItems: "center", paddingVertical: 8 },

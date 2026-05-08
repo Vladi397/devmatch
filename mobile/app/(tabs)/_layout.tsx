@@ -18,6 +18,7 @@ function TabIcon({ name, focusedName, focused, label }: TabIconProps) {
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
   return (
     <View style={styles.tabItem}>
+      {focused && <View style={[styles.tabIndicator, { backgroundColor: Colors.blue }]} />}
       <Ionicons
         name={focused ? focusedName : name}
         size={24}
@@ -49,6 +50,11 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom,
+          shadowColor: Colors.blue,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+          elevation: 12,
         },
       }}
     >
@@ -97,6 +103,13 @@ function makeStyles(Colors: ColorPalette) {
       justifyContent: "center",
       gap: 4,
       paddingTop: 6,
+    },
+    tabIndicator: {
+      position: "absolute",
+      top: 0,
+      width: 24,
+      height: 3,
+      borderRadius: 2,
     },
     tabLabel: {
       fontSize: 10,

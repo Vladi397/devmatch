@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, StatusBar, Platform, RefreshControl,
+  TouchableOpacity, Pressable, StatusBar, Platform, RefreshControl,
 } from "react-native";
-import Animated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated";
+import Animated, {
+  FadeInDown, FadeInUp, ZoomIn,
+  useSharedValue, useAnimatedStyle,
+  withRepeat, withSequence, withTiming, withDelay, withSpring, Easing,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -16,6 +20,22 @@ import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
+
+function FloatBlob({ color, size, top, left, bottom, right, delay = 0 }: {
+  color: string; size: number; top?: number; left?: number; bottom?: number; right?: number; delay?: number;
+}) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.14, { duration: 4500, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 4500, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return (
+    <Animated.View style={[{ position: "absolute", width: size, height: size, borderRadius: size / 2, backgroundColor: color, opacity: 0.07 }, { top, left, bottom, right }, style]} />
+  );
+}
 
 async function loadItem(key: string): Promise<string | null> {
   if (Platform.OS === "web") return localStorage.getItem(key);
@@ -55,6 +75,34 @@ function useCountUp(target: number, delay = 0) {
     return () => clearTimeout(t);
   }, [target]);
   return count;
+}
+
+function QuickCard({ route, icon, label, sub, color }: { route: string; icon: string; label: string; sub: string; color: string }) {
+  const { colors: Colors } = useTheme();
+  const styles = useMemo(() => makeStyles(Colors), [Colors]);
+  const scale = useSharedValue(1);
+  const rotX  = useSharedValue(0);
+  const anim  = useAnimatedStyle(() => ({
+    transform: [{ perspective: 700 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
+  }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.96, { damping: 14 }); rotX.value = withSpring(5, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1,    { damping: 14 }); rotX.value = withSpring(0, { damping: 12 }); }}
+      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(route as any); }}
+    >
+      <Animated.View style={[styles.quickCard, { borderLeftColor: color + "90", borderLeftWidth: 3 }, anim]}>
+        <View style={[styles.quickIconWrap, { backgroundColor: color + "18" }]}>
+          <Ionicons name={icon as any} size={20} color={color} />
+        </View>
+        <View style={styles.quickText}>
+          <Text style={styles.quickLabel}>{label}</Text>
+          <Text style={styles.quickSub}>{sub}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+      </Animated.View>
+    </Pressable>
+  );
 }
 
 function StatCard({ icon, label, value, color, index }: { icon: any; label: string; value: number; color: string; index: number }) {
@@ -132,6 +180,10 @@ export default function DashboardScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
+      <FloatBlob color={Colors.blue} size={320} top={-90} left={-130} delay={0} />
+      <FloatBlob color={Colors.cyan} size={240} top={220} right={-110} delay={1200} />
+      <FloatBlob color={Colors.pink} size={180} bottom={90} left={-80} delay={700} />
+
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <DevMatchLogo size="sm" />
         <TouchableOpacity onPress={() => router.push("/(tabs)/settings")} activeOpacity={0.7}>
@@ -208,30 +260,9 @@ export default function DashboardScreen() {
         <Animated.View entering={FadeInDown.delay(420).duration(400)} style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickCol}>
-            {[
-              { route: "/(tabs)/jobs",        icon: "briefcase-outline",     label: "Browse Jobs",   sub: "Find your next role",  color: Colors.blue },
-              { route: "/(tabs)/resume",       icon: "document-text-outline", label: "My Resume",     sub: "Upload & optimize",    color: Colors.cyan },
-              { route: "/(tabs)/applications", icon: "layers-outline",        label: "Applications",  sub: "Track your progress",  color: Colors.success },
-            ].map((item) => (
-              <TouchableOpacity
-                key={item.route}
-                style={styles.quickCard}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push(item.route as any);
-                }}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.quickIconWrap, { backgroundColor: item.color + "18" }]}>
-                  <Ionicons name={item.icon as any} size={20} color={item.color} />
-                </View>
-                <View style={styles.quickText}>
-                  <Text style={styles.quickLabel}>{item.label}</Text>
-                  <Text style={styles.quickSub}>{item.sub}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-            ))}
+            <QuickCard route="/(tabs)/jobs"        icon="briefcase-outline"     label="Browse Jobs"  sub="Find your next role"  color={Colors.blue}    />
+            <QuickCard route="/(tabs)/resume"       icon="document-text-outline" label="My Resume"    sub="Upload & optimize"    color={Colors.cyan}    />
+            <QuickCard route="/(tabs)/applications" icon="layers-outline"        label="Applications" sub="Track your progress"  color={Colors.success} />
           </View>
         </Animated.View>
       </ScrollView>
@@ -255,7 +286,8 @@ function makeStyles(Colors: ColorPalette) {
     statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.xl },
     statCard: {
       width: "48%", backgroundColor: Colors.bgCard,
-      borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
+      borderRadius: Radius.lg, borderWidth: 1, borderColor: Colors.border,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.14, shadowRadius: 10, elevation: 3,
     },
     statTop: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -272,7 +304,8 @@ function makeStyles(Colors: ColorPalette) {
 
     activityCard: {
       backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
+      borderWidth: 1, borderColor: Colors.border,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
     },
     activityRow: {
       flexDirection: "row", alignItems: "center",
@@ -291,6 +324,7 @@ function makeStyles(Colors: ColorPalette) {
       flexDirection: "row", alignItems: "center", gap: Spacing.md,
       backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
       borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
     },
     quickIconWrap: { width: 40, height: 40, borderRadius: Radius.md, alignItems: "center", justifyContent: "center" },
     quickText: { flex: 1 },

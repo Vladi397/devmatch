@@ -16,7 +16,10 @@
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:3000/health\" -UseBasicParsing; Write-Host $r.Content } catch { Write-Host \"Error: $_\" })",
       "Bash(Get-Content \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\backend\\\\.env\")",
       "Bash(curl -s http://localhost:3000/health)",
-      "WebFetch(domain:generativelanguage.googleapis.com)"
+      "WebFetch(domain:generativelanguage.googleapis.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

@@ -416,7 +416,8 @@ function makeStyles(Colors: ColorPalette) {
 
     section: {
       backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
-      borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.xl, overflow: "hidden",
+      borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.xl,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 2,
     },
     row: {
       flexDirection: "row", alignItems: "center",

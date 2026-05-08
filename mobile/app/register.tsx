@@ -1,9 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, StatusBar,
 } from "react-native";
-import Animated, { ZoomIn, FadeInDown } from "react-native-reanimated";
+import Animated, {
+  ZoomIn, FadeInDown,
+  useSharedValue, useAnimatedStyle,
+  withRepeat, withSequence, withTiming, withDelay, Easing,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +18,18 @@ import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
+
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.15, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, animStyle]} />;
+}
 
 export default function RegisterScreen() {
   const { register, loading, error } = useAuth();
@@ -47,8 +63,8 @@ export default function RegisterScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-      <View style={[styles.blob, styles.blobTL]} />
-      <View style={[styles.blob, styles.blobBR]} />
+      <AnimBlob style={[styles.blob, styles.blobTL]} delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobBR]} delay={800} />
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
         <ScrollView
@@ -147,6 +163,7 @@ function makeStyles(Colors: ColorPalette) {
     card: {
       backgroundColor: Colors.bgCard, borderRadius: Radius.xl,
       borderWidth: 1, borderColor: Colors.border, padding: Spacing.xxl,
+      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 6,
     },
     cardTitle: { fontSize: 20, fontWeight: "800", color: Colors.textPrimary, textAlign: "center", marginBottom: 6 },
     cardSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: "center", marginBottom: Spacing.xl },
@@ -161,6 +178,7 @@ function makeStyles(Colors: ColorPalette) {
       backgroundColor: Colors.blue, borderRadius: Radius.full,
       paddingVertical: 15, alignItems: "center",
       marginBottom: Spacing.lg, marginTop: Spacing.sm,
+      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.45, shadowRadius: 16, elevation: 6,
     },
     btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
     loginRow: { flexDirection: "row", justifyContent: "center" },

@@ -274,6 +274,7 @@ function makeStyles(Colors: ColorPalette) {
     analyzeBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: 8, paddingVertical: 14, borderRadius: Radius.md, backgroundColor: Colors.blue,
+      shadowColor: Colors.blue, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 5,
     },
     analyzingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     analyzeBtnDisabled: { opacity: 0.45 },
@@ -300,6 +301,7 @@ function makeStyles(Colors: ColorPalette) {
     card: {
       backgroundColor: Colors.bgCard, borderRadius: Radius.lg,
       borderWidth: 1, borderColor: Colors.border, padding: Spacing.lg, gap: Spacing.md,
+      shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
     },
     cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     cardTitleAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: Colors.blue },

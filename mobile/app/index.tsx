@@ -33,6 +33,7 @@ function OrbitRing({
     transform: [{ rotate: `${rot.value}deg` }],
   }));
   const offset = (STAGE - size) / 2;
+  const dotSize = size < 100 ? 5 : 6;
   return (
     <Animated.View style={[{
       position: "absolute",
@@ -43,26 +44,36 @@ function OrbitRing({
       left: offset,
       borderWidth: 1.5,
       borderTopColor: ca,
-      borderRightColor: cb + "80",
-      borderBottomColor: "transparent",
-      borderLeftColor: ca + "35",
-    }, style]} />
+      borderRightColor: cb + "70",
+      borderBottomColor: ca + "15",
+      borderLeftColor: ca + "40",
+    }, style]}>
+      {/* Leading-edge satellite dot */}
+      <View style={{
+        position: "absolute",
+        width: dotSize, height: dotSize, borderRadius: dotSize / 2,
+        backgroundColor: ca,
+        top: -dotSize / 2,
+        left: size / 2 - dotSize / 2,
+        shadowColor: ca, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6, elevation: 4,
+      }} />
+    </Animated.View>
   );
 }
 
 function GlowPulse({ color }: { color: string }) {
-  const glowSize = 148;
+  const glowSize = 160;
   const offset = (STAGE - glowSize) / 2;
   const sc = useSharedValue(1);
-  const op = useSharedValue(0.14);
+  const op = useSharedValue(0.18);
   useEffect(() => {
     sc.value = withRepeat(withSequence(
-      withTiming(1.28, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      withTiming(1.0,  { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.32, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 2200, easing: Easing.inOut(Easing.sin) }),
     ), -1, false);
     op.value = withRepeat(withSequence(
-      withTiming(0.06, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      withTiming(0.20, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0.08, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
+      withTiming(0.28, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
     ), -1, false);
   }, []);
   const style = useAnimatedStyle(() => ({
@@ -150,11 +161,12 @@ export default function Index() {
       <BackgroundBlob bottom={-70} right={-70} size={260} color={Colors.cyan} duration={3500} delay={700}  />
 
       <View style={styles.center}>
-        {/* Icon stage: orbit rings + glow + icon — all centered in 220×220 box */}
+        {/* Icon stage: perspective 3D orbit system */}
         <View style={styles.stage}>
           <GlowPulse color={Colors.blue} />
-          <OrbitRing size={114} ca={Colors.blue} cb={Colors.cyan} ms={3000} cw={true}  />
-          <OrbitRing size={158} ca={Colors.cyan} cb={Colors.pink} ms={5200} cw={false} />
+          <OrbitRing size={76}  ca={Colors.pink} cb={Colors.blue} ms={1800} cw={true}  />
+          <OrbitRing size={116} ca={Colors.blue} cb={Colors.cyan} ms={3200} cw={false} />
+          <OrbitRing size={162} ca={Colors.cyan} cb={Colors.pink} ms={5400} cw={true}  />
           <Animated.View entering={ZoomIn.delay(250).duration(700).springify()}>
             <DevMatchLogo size="lg" showWordmark={false} />
           </Animated.View>
@@ -180,7 +192,11 @@ export default function Index() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 20 },
-  stage: { width: STAGE, height: STAGE, alignItems: "center", justifyContent: "center" },
+  stage: {
+    width: STAGE, height: STAGE,
+    alignItems: "center", justifyContent: "center",
+    transform: [{ perspective: 480 }, { rotateX: "22deg" }],
+  },
   wordmarkRow: { flexDirection: "row", alignItems: "center" },
   wordDev:   { fontSize: 28, fontWeight: "800", letterSpacing: 4 },
   wordMatch: { fontSize: 28, fontWeight: "800", letterSpacing: 4 },

@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from "react-native";
+import { View, Text, Pressable, StyleSheet, StatusBar } from "react-native";
 import Animated, {
   FadeInDown, ZoomIn,
   useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming,
+  withRepeat, withSequence, withTiming, withSpring,
   Easing,
 } from "react-native-reanimated";
 import Svg, { Circle, Path, Ellipse } from "react-native-svg";
@@ -44,6 +44,23 @@ function SadFace({ color, accent }: { color: string; accent: string }) {
         <Path d="M 30 68 Q 50 56 70 68" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
       </Svg>
     </Animated.View>
+  );
+}
+
+function Btn3D({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+  const scale = useSharedValue(1);
+  const rotX  = useSharedValue(0);
+  const anim  = useAnimatedStyle(() => ({
+    transform: [{ perspective: 600 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
+  }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.93, { damping: 14 }); rotX.value = withSpring(7, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1,    { damping: 14 }); rotX.value = withSpring(0, { damping: 12 }); }}
+      onPress={onPress}
+    >
+      <Animated.View style={anim}>{children}</Animated.View>
+    </Pressable>
   );
 }
 
@@ -91,23 +108,19 @@ export default function NotFoundScreen() {
 
         {/* Actions */}
         <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.btnPrimary, { backgroundColor: Colors.blue }]}
-            onPress={() => router.replace("/(tabs)/dashboard" as any)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="home-outline" size={18} color="#fff" />
-            <Text style={styles.btnPrimaryText}>Go Home</Text>
-          </TouchableOpacity>
+          <Btn3D onPress={() => router.replace("/(tabs)/dashboard" as any)}>
+            <View style={[styles.btnPrimary, { backgroundColor: Colors.blue }]}>
+              <Ionicons name="home-outline" size={18} color="#fff" />
+              <Text style={styles.btnPrimaryText}>Go Home</Text>
+            </View>
+          </Btn3D>
 
-          <TouchableOpacity
-            style={[styles.btnSecondary, { borderColor: Colors.border }]}
-            onPress={() => router.back()}
-            activeOpacity={0.75}
-          >
-            <Ionicons name="arrow-back-outline" size={16} color={Colors.textSecondary} />
-            <Text style={[styles.btnSecondaryText, { color: Colors.textSecondary }]}>Go Back</Text>
-          </TouchableOpacity>
+          <Btn3D onPress={() => router.back()}>
+            <View style={[styles.btnSecondary, { borderColor: Colors.border }]}>
+              <Ionicons name="arrow-back-outline" size={16} color={Colors.textSecondary} />
+              <Text style={[styles.btnSecondaryText, { color: Colors.textSecondary }]}>Go Back</Text>
+            </View>
+          </Btn3D>
         </Animated.View>
       </View>
     </View>
