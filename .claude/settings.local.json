@@ -22,7 +22,10 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(Get-ChildItem -Path \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\" -Directory)",
       "Bash(Select-Object Name)",
-      "Bash(grep -E '\\\\.\\(tsx|ts\\)$')"
+      "Bash(grep -E '\\\\.\\(tsx|ts\\)$')",
+      "Bash(Remove-Item \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\mobile\\\\hooks\\\\useSocialAuth.ts\" -Force)",
+      "Bash(Remove-Item \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\mobile\\\\constants\\\\oauth.ts\" -Force)",
+      "Bash(Write-Output \"Deleted\")"
     ]
   }
 }

@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  View, Text, TouchableOpacity, ScrollView,
+  View, Text, TouchableOpacity, Pressable, ScrollView,
   StyleSheet, StatusBar, ActivityIndicator,
 } from "react-native";
-import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import Animated, {
+  FadeInDown, ZoomIn,
+  useSharedValue, useAnimatedStyle, withSpring,
+  withRepeat, withSequence, withTiming, withDelay, Easing,
+} from "react-native-reanimated";
 import * as DocumentPicker from "expo-document-picker";
 import ResumeImproveModal from "@/components/ResumeImproveModal";
 import * as Haptics from "expo-haptics";
@@ -22,6 +26,38 @@ type Resume = {
   content: string;
   uploadedAt: string;
 };
+
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, animStyle]} />;
+}
+
+function Btn3D({ onPress, loading, style, children }: {
+  onPress: () => void; loading?: boolean; style: any; children: React.ReactNode;
+}) {
+  const scale = useSharedValue(1);
+  const rotX  = useSharedValue(0);
+  const anim  = useAnimatedStyle(() => ({
+    transform: [{ perspective: 700 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
+  }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.96, { damping: 14 }); rotX.value = withSpring(5, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1,   { damping: 14 }); rotX.value = withSpring(0, { damping: 12 }); }}
+      onPress={onPress}
+      disabled={loading}
+    >
+      <Animated.View style={[style, anim]}>{children}</Animated.View>
+    </Pressable>
+  );
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -110,6 +146,9 @@ export default function ResumeScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <AnimBlob style={[styles.blob, styles.blobTL]}  delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.headerTitle}>{t("resume.title")}</Text>
@@ -178,31 +217,22 @@ export default function ResumeScreen() {
             )}
 
             <Animated.View entering={FadeInDown.delay(380).duration(400)}>
-              {uploading ? (
-                <View style={[styles.replaceBtn, { opacity: 0.7 }]}>
-                  <ActivityIndicator color={Colors.blue} size="small" />
-                  <Text style={styles.replaceBtnText}>{t("resume.uploading")}</Text>
-                </View>
-              ) : (
-                <TouchableOpacity style={styles.replaceBtn} onPress={handleUpload} activeOpacity={0.85}>
-                  <Ionicons name="cloud-upload-outline" size={16} color={Colors.blue} />
-                  <Text style={styles.replaceBtnText}>{t("resume.replaceResume")}</Text>
-                </TouchableOpacity>
-              )}
+              <Btn3D onPress={handleUpload} loading={uploading} style={[styles.replaceBtn, uploading && { opacity: 0.7 }]}>
+                {uploading
+                  ? <ActivityIndicator color={Colors.blue} size="small" />
+                  : <Ionicons name="cloud-upload-outline" size={16} color={Colors.blue} />}
+                <Text style={styles.replaceBtnText}>{uploading ? t("resume.uploading") : t("resume.replaceResume")}</Text>
+              </Btn3D>
             </Animated.View>
 
             <Animated.View entering={FadeInDown.delay(450).duration(400)}>
-              <TouchableOpacity
+              <Btn3D
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowImprove(true); }}
                 style={styles.improveBtn}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setShowImprove(true);
-                }}
-                activeOpacity={0.85}
               >
                 <Ionicons name="sparkles-outline" size={16} color={Colors.cyan} />
                 <Text style={styles.improveBtnText}>{t("resume.improveWithAI")}</Text>
-              </TouchableOpacity>
+              </Btn3D>
             </Animated.View>
           </Animated.View>
         ) : (
@@ -215,17 +245,12 @@ export default function ResumeScreen() {
               <Text style={styles.uploadZoneTitle}>{t("resume.noResume")}</Text>
               <Text style={styles.uploadZoneSub}>{t("resume.noResumeHint")}</Text>
 
-              {uploading ? (
-                <View style={[styles.uploadBtn, { opacity: 0.8 }]}>
-                  <ActivityIndicator color="#fff" size="small" />
-                  <Text style={styles.uploadBtnText}>{t("resume.uploading")}</Text>
-                </View>
-              ) : (
-                <TouchableOpacity style={styles.uploadBtn} onPress={handleUpload} activeOpacity={0.85}>
-                  <Ionicons name="cloud-upload-outline" size={18} color="#fff" />
-                  <Text style={styles.uploadBtnText}>{t("resume.uploadResume")}</Text>
-                </TouchableOpacity>
-              )}
+              <Btn3D onPress={handleUpload} loading={uploading} style={[styles.uploadBtn, uploading && { opacity: 0.8 }]}>
+                {uploading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Ionicons name="cloud-upload-outline" size={18} color="#fff" />}
+                <Text style={styles.uploadBtnText}>{uploading ? t("resume.uploading") : t("resume.uploadResume")}</Text>
+              </Btn3D>
             </View>
 
             <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.featuresCard}>
@@ -279,6 +304,10 @@ export default function ResumeScreen() {
 function makeStyles(Colors: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: Colors.bg },
+    blob: { position: "absolute", borderRadius: 999 },
+    blobTL:  { width: 260, height: 260, backgroundColor: Colors.cyan,  opacity: 0.08, top: -90, left: -80 },
+    blobBR:  { width: 200, height: 200, backgroundColor: Colors.blue,  opacity: 0.07, bottom: 80, right: -70 },
+    blobMid: { width: 150, height: 150, backgroundColor: Colors.pink,  opacity: 0.05, top: "40%", left: -40 },
     header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
     headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
     headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },

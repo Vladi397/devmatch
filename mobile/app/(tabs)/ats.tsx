@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Pressable,
   TextInput, ActivityIndicator, StatusBar,
 } from "react-native";
 import Animated, {
-  FadeInDown, ZoomIn, useSharedValue, useAnimatedProps, withTiming, Easing,
+  FadeInDown, ZoomIn, useSharedValue, useAnimatedProps, useAnimatedStyle,
+  withTiming, withSpring, withRepeat, withSequence, withDelay, Easing,
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
@@ -70,6 +71,18 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, animStyle]} />;
+}
+
 function KeywordChip({ label, type, index }: { label: string; type: "match" | "miss"; index: number }) {
   const { colors: Colors } = useTheme();
   const bg = type === "match" ? Colors.success + "22" : Colors.danger + "22";
@@ -82,6 +95,38 @@ function KeywordChip({ label, type, index }: { label: string; type: "match" | "m
         <Text style={{ fontSize: 12, fontWeight: "600", color: fg }}>{label}</Text>
       </View>
     </Animated.View>
+  );
+}
+
+function AnalyzeBtn({ onPress, loading, disabled, styles }: {
+  onPress: () => void; loading: boolean; disabled: boolean; styles: any;
+}) {
+  const scale = useSharedValue(1);
+  const rotX  = useSharedValue(0);
+  const anim  = useAnimatedStyle(() => ({
+    transform: [{ perspective: 700 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
+  }));
+  return (
+    <Pressable
+      onPressIn={() => { scale.value = withSpring(0.96, { damping: 14 }); rotX.value = withSpring(5, { damping: 12 }); }}
+      onPressOut={() => { scale.value = withSpring(1,   { damping: 14 }); rotX.value = withSpring(0, { damping: 12 }); }}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Animated.View style={[styles.analyzeBtn, disabled && styles.analyzeBtnDisabled, anim]}>
+        {loading ? (
+          <View style={styles.analyzingRow}>
+            <ActivityIndicator color="#fff" size="small" />
+            <Text style={styles.analyzeBtnText}>Analyzing…</Text>
+          </View>
+        ) : (
+          <>
+            <Ionicons name="analytics-outline" size={18} color="#fff" />
+            <Text style={styles.analyzeBtnText}>Analyze Match</Text>
+          </>
+        )}
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -122,6 +167,9 @@ export default function ATSScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <AnimBlob style={[styles.blob, styles.blobTL]}  delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.headerTitle}>ATS Scanner</Text>
@@ -152,24 +200,12 @@ export default function ATSScreen() {
             onBlur={() => setFocused(false)}
             textAlignVertical="top"
           />
-          <TouchableOpacity
-            style={[styles.analyzeBtn, (!jobDescription.trim() || loading) && styles.analyzeBtnDisabled]}
+          <AnalyzeBtn
             onPress={handleAnalyze}
+            loading={loading}
             disabled={!jobDescription.trim() || loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <View style={styles.analyzingRow}>
-                <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.analyzeBtnText}>Analyzing…</Text>
-              </View>
-            ) : (
-              <>
-                <Ionicons name="analytics-outline" size={18} color="#fff" />
-                <Text style={styles.analyzeBtnText}>Analyze Match</Text>
-              </>
-            )}
-          </TouchableOpacity>
+            styles={styles}
+          />
         </Animated.View>
 
         {error && (
@@ -253,6 +289,10 @@ export default function ATSScreen() {
 function makeStyles(Colors: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: Colors.bg },
+    blob: { position: "absolute", borderRadius: 999 },
+    blobTL:  { width: 260, height: 260, backgroundColor: Colors.pink, opacity: 0.07, top: -90, left: -80 },
+    blobBR:  { width: 200, height: 200, backgroundColor: Colors.blue, opacity: 0.08, bottom: 80, right: -70 },
+    blobMid: { width: 150, height: 150, backgroundColor: Colors.cyan, opacity: 0.06, top: "42%", left: -40 },
     header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
     headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
     headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },

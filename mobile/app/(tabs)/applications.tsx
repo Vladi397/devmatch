@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, StatusBar, Platform, Alert,
-  Modal, TextInput, Clipboard, ActivityIndicator,
+  Modal, TextInput, ActivityIndicator,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import Animated, {
   FadeInDown, FadeInUp, ZoomIn,
   useSharedValue, useAnimatedStyle, withSpring, withSequence,
+  withRepeat, withTiming, withDelay, Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,6 +41,18 @@ type Application = {
 };
 
 type Counts = { all: number; pending: number; applied: number; interview: number; rejected: number };
+
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, animStyle]} />;
+}
 
 function useCountUp(target: number, delay = 0) {
   const [count, setCount] = useState(0);
@@ -308,9 +322,9 @@ export default function ApplicationsScreen() {
     finally { setGenerating(false); }
   }
 
-  function handleCopy() {
+  async function handleCopy() {
     if (!letter) return;
-    Clipboard.setString(letter);
+    await Clipboard.setStringAsync(letter);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -368,6 +382,9 @@ export default function ApplicationsScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <AnimBlob style={[styles.blob, styles.blobTL]}  delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <DevMatchLogo size="sm" />
@@ -598,6 +615,10 @@ export default function ApplicationsScreen() {
 function makeStyles(Colors: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: Colors.bg },
+    blob: { position: "absolute", borderRadius: 999 },
+    blobTL:  { width: 280, height: 280, backgroundColor: Colors.blue, opacity: 0.08, top: -100, left: -90 },
+    blobBR:  { width: 220, height: 220, backgroundColor: Colors.cyan, opacity: 0.06, bottom: 80, right: -80 },
+    blobMid: { width: 160, height: 160, backgroundColor: Colors.pink, opacity: 0.05, top: "42%", left: -50 },
     header: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
       paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.md,

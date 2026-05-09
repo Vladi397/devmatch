@@ -4,7 +4,10 @@ import {
   Switch, StatusBar, Modal, TextInput, Alert, Share,
   Platform, ActivityIndicator,
 } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown, useSharedValue, useAnimatedStyle,
+  withRepeat, withSequence, withTiming, withDelay, Easing,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -74,6 +77,18 @@ function SettingRow({ icon, label, sub, onPress, toggle, toggleValue, onToggle, 
       )}
     </TouchableOpacity>
   );
+}
+
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, animStyle]} />;
 }
 
 function SectionHeader({ title, index }: { title: string; index: number }) {
@@ -194,6 +209,9 @@ export default function SettingsScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <AnimBlob style={[styles.blob, styles.blobTL]}  delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
 
       <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
         <Text style={styles.headerTitle}>{t("settings.title")}</Text>
@@ -381,6 +399,10 @@ export default function SettingsScreen() {
 function makeStyles(Colors: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: Colors.bg },
+    blob: { position: "absolute", borderRadius: 999 },
+    blobTL:  { width: 280, height: 280, backgroundColor: Colors.blue, opacity: 0.07, top: -100, left: -90 },
+    blobBR:  { width: 200, height: 200, backgroundColor: Colors.pink, opacity: 0.06, bottom: 100, right: -70 },
+    blobMid: { width: 150, height: 150, backgroundColor: Colors.cyan, opacity: 0.05, top: "45%", left: -40 },
     header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
     headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
     scroll: { flex: 1, paddingHorizontal: Spacing.xl },
