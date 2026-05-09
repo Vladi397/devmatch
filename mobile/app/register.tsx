@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   View, Text, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView,
-  ActivityIndicator, StatusBar, Alert,
+  ActivityIndicator, StatusBar,
 } from "react-native";
 import Animated, {
-  ZoomIn, FadeInDown, FadeInUp,
+  ZoomIn, FadeInDown,
   useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming, withDelay, withSpring, Easing,
 } from "react-native-reanimated";
@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import { AuthInput } from "@/components/AuthInput";
 import { useAuth } from "@/hooks/useAuth";
-import { useSocialAuth } from "@/hooks/useSocialAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
@@ -32,52 +31,6 @@ function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
   }, []);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
   return <Animated.View style={[style, animStyle]} />;
-}
-
-// ─── 3D social button ────────────────────────────────────────────────────────
-function SocialBtn({ icon, label, onPress, disabled }: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  const { colors: Colors } = useTheme();
-  const scale = useSharedValue(1);
-  const rotX  = useSharedValue(0);
-  const anim  = useAnimatedStyle(() => ({
-    transform: [{ perspective: 600 }, { scale: scale.value }, { rotateX: `${rotX.value}deg` }],
-  }));
-  return (
-    <Pressable
-      onPressIn={() => { scale.value = withSpring(0.88, { damping: 14 }); rotX.value = withSpring(10, { damping: 12 }); }}
-      onPressOut={() => { scale.value = withSpring(1,    { damping: 14 }); rotX.value = withSpring(0,  { damping: 12 }); }}
-      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
-      disabled={disabled}
-      style={{ opacity: disabled ? 0.45 : 1 }}
-    >
-      <Animated.View style={[{
-        width: 52, height: 52, borderRadius: 26,
-        backgroundColor: Colors.bgInput,
-        borderWidth: 1.5, borderColor: Colors.border,
-        alignItems: "center", justifyContent: "center",
-        shadowColor: Colors.blue, shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.18, shadowRadius: 8, elevation: 3,
-      }, anim]}>
-        <Ionicons name={icon} size={22} color={Colors.textPrimary} />
-      </Animated.View>
-    </Pressable>
-  );
-}
-
-// ─── Divider ─────────────────────────────────────────────────────────────────
-function OrDivider({ label, Colors, styles }: { label: string; Colors: ColorPalette; styles: any }) {
-  return (
-    <View style={styles.dividerRow}>
-      <View style={[styles.dividerLine, { backgroundColor: Colors.border }]} />
-      <Text style={[styles.dividerText, { color: Colors.textMuted }]}>{label}</Text>
-      <View style={[styles.dividerLine, { backgroundColor: Colors.border }]} />
-    </View>
-  );
 }
 
 // ─── Primary button with 3D press ────────────────────────────────────────────
@@ -109,21 +62,14 @@ function PrimaryBtn({ label, onPress, loading, Colors, styles }: {
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function RegisterScreen() {
-  const { register, socialLogin, loading, error } = useAuth();
+  const { register, loading, error } = useAuth();
   const { colors: Colors, isDark } = useTheme();
   const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
-  const [email, setEmail]   = useState("");
+  const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [repeat, setRepeat] = useState("");
+  const [repeat, setRepeat]     = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; repeat?: string }>({});
-  const [socialLoading, setSocialLoading] = useState(false);
-
-  const { signInWithGoogle, signInWithApple, signInWithLinkedIn } = useSocialAuth({
-    onSuccess: (token, user) => socialLogin(token, user),
-    onError:   (msg) => Alert.alert("Sign Up Failed", msg),
-    onLoading: setSocialLoading,
-  });
 
   function validate() {
     const errs: { email?: string; password?: string; repeat?: string } = {};
@@ -143,13 +89,10 @@ export default function RegisterScreen() {
     register(email, password);
   }
 
-  const anyLoading = loading || socialLoading;
-
   return (
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Aurora background */}
       <AnimBlob style={[styles.blob, styles.blobTL]}  delay={0} />
       <AnimBlob style={[styles.blob, styles.blobBR]}  delay={800} />
       <AnimBlob style={[styles.blob, styles.blobMid]} delay={1400} />
@@ -160,14 +103,11 @@ export default function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo */}
           <Animated.View entering={ZoomIn.duration(550).springify()} style={styles.logoWrap}>
             <DevMatchLogo size="md" />
           </Animated.View>
 
-          {/* Card */}
           <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.card}>
-
             <Text style={styles.cardTitle}>{t("auth.createAccount")}</Text>
             <Text style={styles.cardSubtitle}>{t("auth.registerSubtitle")}</Text>
 
@@ -205,16 +145,14 @@ export default function RegisterScreen() {
               </Animated.View>
             ) : null}
 
-            {/* Create account button */}
             <PrimaryBtn
               label={t("auth.createAccount")}
               onPress={handleRegister}
-              loading={anyLoading}
+              loading={loading}
               Colors={Colors}
               styles={styles}
             />
 
-            {/* Login link */}
             <View style={styles.switchRow}>
               <Text style={[styles.switchText, { color: Colors.textSecondary }]}>{t("auth.haveAccount")} </Text>
               <Link href="/login" asChild>
@@ -223,16 +161,6 @@ export default function RegisterScreen() {
                 </Pressable>
               </Link>
             </View>
-
-            {/* Social auth */}
-            <OrDivider label="Or continue with" Colors={Colors} styles={styles} />
-
-            <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.socialRow}>
-              <SocialBtn icon="logo-google"   label="Google"   onPress={signInWithGoogle}   disabled={anyLoading} />
-              <SocialBtn icon="logo-apple"    label="Apple"    onPress={signInWithApple}    disabled={anyLoading} />
-              <SocialBtn icon="logo-linkedin" label="LinkedIn" onPress={signInWithLinkedIn} disabled={anyLoading} />
-            </Animated.View>
-
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -290,14 +218,8 @@ function makeStyles(Colors: ColorPalette) {
     },
     btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700", letterSpacing: 0.3 },
 
-    switchRow: { flexDirection: "row", justifyContent: "center", marginBottom: Spacing.lg },
+    switchRow: { flexDirection: "row", justifyContent: "center" },
     switchText: { fontSize: 13 },
     switchLink: { fontSize: 13, fontWeight: "700" },
-
-    dividerRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.lg },
-    dividerLine: { flex: 1, height: 1 },
-    dividerText: { fontSize: 12, fontWeight: "500" },
-
-    socialRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.xl },
   });
 }
