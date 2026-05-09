@@ -184,7 +184,7 @@ export default function DashboardScreen() {
       <FloatBlob color={Colors.cyan} size={240} top={220} right={-110} delay={1200} />
       <FloatBlob color={Colors.pink} size={180} bottom={90} left={-80} delay={700} />
 
-      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+      <Animated.View entering={FadeInDown.duration(400)} style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <DevMatchLogo size="sm" />
         <TouchableOpacity onPress={() => router.push("/(tabs)/settings")} activeOpacity={0.7}>
           <Ionicons name="person-circle-outline" size={32} color={Colors.textSecondary} />
@@ -275,7 +275,7 @@ function makeStyles(Colors: ColorPalette) {
     root: { flex: 1, backgroundColor: Colors.bg },
     header: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg,
+      paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg,
     },
     scroll: { flex: 1, paddingHorizontal: Spacing.xl },
 

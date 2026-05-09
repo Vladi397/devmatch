@@ -150,7 +150,7 @@ export default function ResumeScreen() {
       <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
       <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
 
-      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+      <Animated.View entering={FadeInDown.duration(400)} style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <Text style={styles.headerTitle}>{t("resume.title")}</Text>
         <Text style={styles.headerSub}>{t("resume.noResumeHint")}</Text>
       </Animated.View>
@@ -308,7 +308,7 @@ function makeStyles(Colors: ColorPalette) {
     blobTL:  { width: 260, height: 260, backgroundColor: Colors.cyan,  opacity: 0.08, top: -90, left: -80 },
     blobBR:  { width: 200, height: 200, backgroundColor: Colors.blue,  opacity: 0.07, bottom: 80, right: -70 },
     blobMid: { width: 150, height: 150, backgroundColor: Colors.pink,  opacity: 0.05, top: "40%", left: -40 },
-    header: { paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg },
+    header: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg },
     headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.textPrimary },
     headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
     scroll: { flex: 1, paddingHorizontal: Spacing.xl },

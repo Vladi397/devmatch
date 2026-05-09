@@ -104,6 +104,18 @@ function RoleChip({ label, active, onPress }: { label: string; active: boolean; 
   );
 }
 
+function AnimBlob({ style, delay = 0 }: { style: any; delay?: number }) {
+  const sc = useSharedValue(1);
+  useEffect(() => {
+    sc.value = withDelay(delay, withRepeat(withSequence(
+      withTiming(1.14, { duration: 4500, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1.0,  { duration: 4500, easing: Easing.inOut(Easing.sin) }),
+    ), -1, false));
+  }, []);
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return <Animated.View style={[style, anim]} />;
+}
+
 export default function JobsScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
@@ -205,7 +217,11 @@ export default function JobsScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+      <AnimBlob style={[styles.blob, styles.blobTL]}  delay={0} />
+      <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
+      <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
+
+      <Animated.View entering={FadeInDown.duration(400)} style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <DevMatchLogo size="sm" />
         <Text style={styles.headerTitle}>{t("jobs.title")}</Text>
       </Animated.View>
@@ -313,9 +329,13 @@ export default function JobsScreen() {
 function makeStyles(Colors: ColorPalette) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: Colors.bg },
+    blob: { position: "absolute", borderRadius: 9999, opacity: 0.07 },
+    blobTL:  { width: 300, height: 300, backgroundColor: Colors.cyan, top: -120, left: -120 },
+    blobBR:  { width: 260, height: 260, backgroundColor: Colors.blue, bottom: 60, right: -110 },
+    blobMid: { width: 200, height: 200, backgroundColor: Colors.pink, top: "40%", left: "30%" },
     header: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.md,
+      paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
     },
     headerTitle: { fontSize: 13, fontWeight: "800", color: Colors.textMuted, letterSpacing: 2 },
 

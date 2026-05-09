@@ -386,7 +386,7 @@ export default function ApplicationsScreen() {
       <AnimBlob style={[styles.blob, styles.blobBR]}  delay={900} />
       <AnimBlob style={[styles.blob, styles.blobMid]} delay={1600} />
 
-      <Animated.View entering={FadeInDown.duration(400)} style={styles.header}>
+      <Animated.View entering={FadeInDown.duration(400)} style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <DevMatchLogo size="sm" />
         <Text style={styles.headerTitle}>{t("applications.title")}</Text>
       </Animated.View>
@@ -446,7 +446,7 @@ export default function ApplicationsScreen() {
       {/* Cover Letter Modal */}
       <Modal visible={!!letterApp} animationType="slide" onRequestClose={() => setLetterApp(null)}>
         <View style={styles.modalRoot}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { paddingTop: insets.top + Spacing.md }]}>
             <View>
               <Text style={styles.modalTitle}>{t("applications.coverLetterTitle")}</Text>
               {letterApp && <Text style={styles.modalSub}>{letterApp.title} · {letterApp.company}</Text>}
@@ -621,7 +621,7 @@ function makeStyles(Colors: ColorPalette) {
     blobMid: { width: 160, height: 160, backgroundColor: Colors.pink, opacity: 0.05, top: "42%", left: -50 },
     header: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.md,
+      paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md,
     },
     headerTitle: { fontSize: 13, fontWeight: "800", color: Colors.textMuted, letterSpacing: 2 },
 
@@ -694,7 +694,7 @@ function makeStyles(Colors: ColorPalette) {
     modalRoot: { flex: 1, backgroundColor: Colors.bg },
     modalHeader: {
       flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-      paddingHorizontal: Spacing.xl, paddingTop: 54, paddingBottom: Spacing.lg,
+      paddingHorizontal: Spacing.xl, paddingBottom: Spacing.lg,
       borderBottomWidth: 1, borderBottomColor: Colors.border, backgroundColor: Colors.bgCard,
     },
     modalTitle: { fontSize: 16, fontWeight: "700", color: Colors.textPrimary },
