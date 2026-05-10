@@ -11,6 +11,7 @@ import Animated, {
   withRepeat, withTiming, withDelay, Easing,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
 import InterviewModal from "@/components/InterviewModal";
@@ -21,6 +22,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
+import { getPreferences, computeMatchScore, type Preferences } from "@/hooks/usePreferences";
+import { setSelectedJob } from "@/store/selectedJob";
 
 type AppStatus = "pending" | "applied" | "interview" | "rejected";
 
@@ -114,9 +117,10 @@ function FilterChip({ filter, active, count, onPress }: {
   );
 }
 
-function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPracticeInterview }: {
+function AppCard({ app, index, matchScore, onStatusChange, onDelete, onGenerateLetter, onPracticeInterview }: {
   app: Application;
   index: number;
+  matchScore?: number;
   onStatusChange: (id: string, status: AppStatus) => void;
   onDelete: (id: string) => void;
   onGenerateLetter: (app: Application) => void;
@@ -164,14 +168,24 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
               )}
             </View>
           </View>
-          <TouchableOpacity
-            style={[styles.statusBadge, { backgroundColor: status.color + "22", borderColor: status.color + "55" }]}
-            onPress={showStatusPicker}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-            {Platform.OS !== "web" && <Ionicons name="chevron-down" size={10} color={status.color} />}
-          </TouchableOpacity>
+          <View style={{ alignItems: "flex-end", gap: 6 }}>
+            {matchScore !== undefined && (() => {
+              const mc = matchScore >= 70 ? Colors.success : matchScore >= 45 ? Colors.cyan : Colors.pink;
+              return (
+                <View style={[styles.matchBadge, { backgroundColor: mc + "22", borderColor: mc + "55" }]}>
+                  <Text style={[styles.matchBadgeText, { color: mc }]}>{matchScore}% match</Text>
+                </View>
+              );
+            })()}
+            <TouchableOpacity
+              style={[styles.statusBadge, { backgroundColor: status.color + "22", borderColor: status.color + "55" }]}
+              onPress={showStatusPicker}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+              {Platform.OS !== "web" && <Ionicons name="chevron-down" size={10} color={status.color} />}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {app.salary && (
@@ -181,17 +195,31 @@ function AppCard({ app, index, onStatusChange, onDelete, onGenerateLetter, onPra
           </View>
         )}
 
-        <TouchableOpacity
-          style={styles.letterBtnFull}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            onGenerateLetter(app);
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="sparkles-outline" size={14} color={Colors.cyan} />
-          <Text style={styles.letterBtnFullText}>{t("applications.generateLetter")}</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: Spacing.sm }}>
+          <TouchableOpacity
+            style={[styles.letterBtnFull, { flex: 1 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedJob({ id: app.externalId, title: app.title, company: app.company, location: app.location, remote: app.remote, salary: app.salary, url: app.url, source: app.source as any, tags: app.tags, description: app.description, postedAt: app.savedAt });
+              router.push("/job-detail" as any);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="briefcase-outline" size={14} color={Colors.blue} />
+            <Text style={[styles.letterBtnFullText, { color: Colors.blue }]}>View Details</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.letterBtnFull, { flex: 1 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onGenerateLetter(app);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="sparkles-outline" size={14} color={Colors.cyan} />
+            <Text style={styles.letterBtnFullText}>{t("applications.generateLetter")}</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.interviewBtnFull}
@@ -262,6 +290,7 @@ export default function ApplicationsScreen() {
   const [showRefinedBadge, setShowRefinedBadge] = useState(false);
 
   const [interviewApp, setInterviewApp] = useState<Application | null>(null);
+  const [prefs, setPrefs] = useState<Preferences>({ roles: [], techStack: [], onboardingDone: false });
 
   const fetchApplications = useCallback(async (status?: AppStatus | "all") => {
     try {
@@ -285,6 +314,7 @@ export default function ApplicationsScreen() {
   }, [getToken]);
 
   useEffect(() => { fetchApplications(activeFilter); }, [activeFilter]);
+  useEffect(() => { getPreferences().then(setPrefs).catch(() => {}); }, []);
 
   async function handleStatusChange(id: string, status: AppStatus) {
     try {
@@ -434,6 +464,7 @@ export default function ApplicationsScreen() {
               key={app.id}
               app={app}
               index={i}
+              matchScore={prefs.techStack.length || prefs.roles.length ? computeMatchScore(app.tags, app.title, prefs) : undefined}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
               onGenerateLetter={openLetterModal}
@@ -662,6 +693,8 @@ function makeStyles(Colors: ColorPalette) {
     remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
     remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
 
+    matchBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full, borderWidth: 1, flexShrink: 0 },
+    matchBadgeText: { fontSize: 10, fontWeight: "700" },
     statusBadge: {
       flexDirection: "row", alignItems: "center", gap: 3,
       paddingHorizontal: 9, paddingVertical: 5,

@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, Linking, Platform, Image, Pressable } from "react-native";
+import { View, Text, StyleSheet, Image, Pressable } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
+import { setSelectedJob } from "@/store/selectedJob";
 
 const LOGO_DEV_TOKEN = "pk_AR5bsdAtQQ6NVIvvzPLQ8Q";
 
@@ -41,6 +43,7 @@ export interface Job {
 interface JobCardProps {
   job: Job;
   saved?: boolean;
+  matchScore?: number;
   onSave?: () => void;
   onUnsave?: () => void;
 }
@@ -95,13 +98,6 @@ function timeAgo(iso: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-function openJob(url: string) {
-  if (Platform.OS === "web") {
-    window.open(url, "_blank", "noopener");
-  } else {
-    Linking.openURL(url);
-  }
-}
 
 function AnimBtn({ style, onPress, children }: { style: any; onPress: () => void; children: React.ReactNode }) {
   const scale = useSharedValue(1);
@@ -130,10 +126,20 @@ function AnimBtn({ style, onPress, children }: { style: any; onPress: () => void
   );
 }
 
-export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) {
+export function JobCard({ job, saved = false, matchScore, onSave, onUnsave }: JobCardProps) {
   const { colors: Colors } = useTheme();
   const { t } = useLanguage();
   const styles = useMemo(() => makeStyles(Colors), [Colors]);
+
+  const matchColor = matchScore !== undefined
+    ? matchScore >= 70 ? Colors.success : matchScore >= 45 ? Colors.cyan : Colors.pink
+    : undefined;
+
+  function openDetail() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedJob(job);
+    router.push("/job-detail" as any);
+  }
 
   return (
     <View style={styles.card}>
@@ -154,7 +160,13 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
           </View>
         </View>
 
-        <Text style={styles.timeAgo}>{timeAgo(job.postedAt)}</Text>
+        {matchScore !== undefined ? (
+          <View style={[styles.matchBadge, { backgroundColor: matchColor + "22", borderColor: matchColor + "55" }]}>
+            <Text style={[styles.matchBadgeText, { color: matchColor }]}>{matchScore}% match</Text>
+          </View>
+        ) : (
+          <Text style={styles.timeAgo}>{timeAgo(job.postedAt)}</Text>
+        )}
       </View>
 
       {(job.salary || job.tags.length > 0) && (
@@ -178,14 +190,8 @@ export function JobCard({ job, saved = false, onSave, onUnsave }: JobCardProps) 
       )}
 
       <View style={styles.actions}>
-        <AnimBtn
-          style={styles.btnView}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            openJob(job.url);
-          }}
-        >
-          <Ionicons name="open-outline" size={14} color="#fff" />
+        <AnimBtn style={styles.btnView} onPress={openDetail}>
+          <Ionicons name="briefcase-outline" size={14} color="#fff" />
           <Text style={styles.btnViewText}>{t("jobs.viewJob")}</Text>
         </AnimBtn>
 
@@ -240,6 +246,8 @@ function makeStyles(Colors: ColorPalette) {
     remoteBadge: { backgroundColor: Colors.cyan + "22", borderRadius: Radius.full, paddingHorizontal: 6, paddingVertical: 1 },
     remoteBadgeText: { fontSize: 9, fontWeight: "700", color: Colors.cyan, letterSpacing: 0.5 },
     timeAgo: { fontSize: 10, color: Colors.textMuted, flexShrink: 0 },
+    matchBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full, borderWidth: 1, alignSelf: "flex-start", flexShrink: 0 },
+    matchBadgeText: { fontSize: 10, fontWeight: "700" },
 
     middle: { gap: Spacing.sm, marginBottom: Spacing.md },
     salaryRow: { flexDirection: "row", alignItems: "center", gap: 5 },

@@ -18,6 +18,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
 import { API_URL } from "@/constants/api";
+import { getPreferences, computeMatchScore, type Preferences } from "@/hooks/usePreferences";
 
 const ROLES: { label: string; query: string }[] = [
   { label: "Frontend", query: "frontend developer" },
@@ -73,11 +74,11 @@ function JobsLoader() {
   );
 }
 
-function AnimatedJobCard({ job, index, saved, onSave, onUnsave }: { job: Job; index: number; saved: boolean; onSave: () => void; onUnsave: () => void }) {
+function AnimatedJobCard({ job, index, saved, matchScore, onSave, onUnsave }: { job: Job; index: number; saved: boolean; matchScore?: number; onSave: () => void; onUnsave: () => void }) {
   const stagger = Math.min(index * 60, 360);
   return (
     <Animated.View entering={FadeInDown.delay(stagger).duration(350).springify()}>
-      <JobCard job={job} saved={saved} onSave={onSave} onUnsave={onUnsave} />
+      <JobCard job={job} saved={saved} matchScore={matchScore} onSave={onSave} onUnsave={onUnsave} />
     </Animated.View>
   );
 }
@@ -131,6 +132,7 @@ export default function JobsScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [prefs, setPrefs] = useState<Preferences>({ roles: [], techStack: [], onboardingDone: false });
 
   const fetchJobs = useCallback(async (role: number, country: number, nextPage: number, append = false) => {
     try {
@@ -169,6 +171,10 @@ export default function JobsScreen() {
           const data = await res.json();
           setSavedIds(new Set(data.ids));
         }
+      } catch {}
+      try {
+        const p = await getPreferences();
+        setPrefs(p);
       } catch {}
     })();
   }, []);
@@ -292,6 +298,7 @@ export default function JobsScreen() {
                 <AnimatedJobCard
                   key={job.id} job={job} index={i}
                   saved={savedIds.has(job.id)}
+                  matchScore={prefs.techStack.length || prefs.roles.length ? computeMatchScore(job.tags, job.title, prefs) : undefined}
                   onSave={() => handleSave(job)}
                   onUnsave={() => handleUnsave(job)}
                 />

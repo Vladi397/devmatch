@@ -14,6 +14,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { LANGUAGES, type LanguageCode } from "@/constants/i18n";
 import type { ColorPalette } from "@/constants/theme";
 import { Radius, Spacing } from "@/constants/theme";
+import { getPreferences } from "@/hooks/usePreferences";
 
 export default function LanguageScreen() {
   const insets = useSafeAreaInsets();
@@ -25,7 +26,8 @@ export default function LanguageScreen() {
   async function handleConfirm() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     await setLanguage(selected);
-    router.replace("/(tabs)/dashboard");
+    const prefs = await getPreferences();
+    router.replace(prefs.onboardingDone ? "/(tabs)/dashboard" : ("/onboarding" as any));
   }
 
   return (

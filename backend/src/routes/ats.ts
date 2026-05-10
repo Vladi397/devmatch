@@ -332,4 +332,58 @@ router.post("/save-improved", protect, async (req: AuthRequest | any, res: Respo
   }
 });
 
+// Job-specific match score with skill/experience/keyword breakdown
+router.post("/match", protect, async (req: AuthRequest | any, res: Response) => {
+  try {
+    const { jobTitle, jobDescription, company } = req.body;
+    if (!jobDescription?.trim()) {
+      return res.status(400).json({ message: "jobDescription is required" });
+    }
+
+    const resume = await prisma.resume.findFirst({
+      where: { userId: req.userId },
+      orderBy: { uploadedAt: "desc" },
+      select: { content: true },
+    });
+
+    if (!resume?.content) {
+      return res.status(404).json({ message: "No resume found. Please upload your resume first." });
+    }
+
+    const prompt = `
+You are an expert recruiter and ATS system. Compare this candidate's resume against the job and return a detailed match analysis as ONLY valid JSON — no markdown, no code blocks.
+
+Resume:
+${resume.content}
+
+Job Title: ${jobTitle || "the position"}
+Company: ${company || "the company"}
+Job Description:
+${jobDescription}
+
+Return ONLY this exact JSON structure:
+{
+  "score": <overall match percentage 0-100>,
+  "projectedScore": <estimated score after minor optimizations, 5-10 points higher than score, max 98>,
+  "breakdown": {
+    "skills": <0-100, how well technical skills match the requirements>,
+    "experience": <0-100, how well experience level and years align>,
+    "keywords": <0-100, keyword and terminology density match>
+  },
+  "matchLevel": "strong|good|partial|weak",
+  "topStrengths": ["strength1", "strength2"],
+  "keyGaps": ["gap1", "gap2"]
+}
+
+Score guide: 80+ = strong match, 65-79 = good match, 40-64 = partial match, <40 = weak match
+    `.trim();
+
+    const data = await runGemini(prompt);
+    res.json(data);
+  } catch (error: any) {
+    console.error("ATS match error:", error);
+    res.status(500).json({ message: "Match analysis failed", detail: error?.message });
+  }
+});
+
 export default router;

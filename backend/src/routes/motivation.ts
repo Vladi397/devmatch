@@ -27,7 +27,7 @@ async function runGemini(prompt: string, attempt = 0): Promise<string> {
 
 router.post("/generate", protect, async (req: AuthRequest | any, res: Response) => {
   try {
-    const { title, company, jobDescription, applicationId } = req.body;
+    const { title, company, jobDescription, applicationId, tone } = req.body;
 
     // Resolve job description: from stored application or from request body
     let resolvedDescription = jobDescription?.trim() ?? "";
@@ -70,7 +70,9 @@ Write a 3-4 paragraph cover letter that:
 - Shows genuine enthusiasm for the company and role
 - Closes confidently with a call to action
 
-Write naturally and professionally. Do NOT use generic phrases like "I am writing to express my interest". Sound like a real person.
+Tone: ${tone === "casual" ? "Friendly and conversational, but still professional" : tone === "confident" ? "Bold, direct and self-assured" : tone === "creative" ? "Engaging, original and memorable" : "Formal and polished professional tone"}
+
+Write naturally. Do NOT use generic phrases like "I am writing to express my interest". Sound like a real person.
 Respond with ONLY the cover letter text — no subject line, no JSON, no markdown.
     `.trim();
 

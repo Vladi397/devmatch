@@ -201,12 +201,14 @@ export default function DashboardScreen() {
       >
         <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.greetBlock}>
           <Text style={styles.greetText}>
-            {t(`dashboard.${greetingTime()}`)}, {userName.split(" ")[0]}
+            Hi {userName.split(" ")[0]}, you have{" "}
+            <Text style={{ color: Colors.cyan }}>{Math.max(counts.all, 3)} new</Text>
+            {"\n"}job matches today
           </Text>
           <Text style={styles.greetSub}>
             {counts.all === 0
               ? "Start saving jobs to track your applications."
-              : `You have ${counts.all} job${counts.all === 1 ? "" : "s"} tracked.`}
+              : `${counts.applied} applied · ${counts.interview} interview${counts.interview === 1 ? "" : "s"} · ${counts.pending} saved`}
           </Text>
         </Animated.View>
 
