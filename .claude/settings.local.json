@@ -25,7 +25,8 @@
       "Bash(grep -E '\\\\.\\(tsx|ts\\)$')",
       "Bash(Remove-Item \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\mobile\\\\hooks\\\\useSocialAuth.ts\" -Force)",
       "Bash(Remove-Item \"d:\\\\Desktop\\\\OL 2\\\\DevMatch\\\\mobile\\\\constants\\\\oauth.ts\" -Force)",
-      "Bash(Write-Output \"Deleted\")"
+      "Bash(Write-Output \"Deleted\")",
+      "PowerShell(Get-Content \"C:\\\\Users\\\\User\\\\.claude\\\\projects\\\\d--Desktop-OL-2-DevMatch\\\\ffe53aee-432f-4760-bdc7-926c1f73d16e.jsonl\" | ForEach-Object { try { $j = $_ | ConvertFrom-Json; if \\($j.type -eq \"user\" -and $j.message.role -eq \"user\"\\) { $texts = $j.message.content | Where-Object { $_.type -eq \"text\" -and $_.text -notmatch \"^<ide_\" -and $_.text -notmatch \"^<system-reminder\" } | Select-Object -ExpandProperty text; if \\($texts\\) { Write-Output \"--- [$\\($j.timestamp\\)] ---\"; $texts | ForEach-Object { Write-Output $_ } } } } catch {} })"
     ]
   }
 }
