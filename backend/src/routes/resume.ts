@@ -43,6 +43,25 @@ router.post("/upload", protect, upload.single("resume"), async (req: AuthRequest
   }
 });
 
+router.post("/upload-text", protect, async (req: AuthRequest | any, res: Response) => {
+  try {
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ message: "Resume text is required" });
+
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const resume = await prisma.resume.create({
+      data: { userId, fileUrl: "pasted-resume.txt", content: text.trim() },
+    });
+
+    res.status(201).json({ message: "Resume saved successfully", resume });
+  } catch (error: any) {
+    console.error("Upload text error:", error);
+    res.status(500).json({ message: "Error saving resume", detail: error?.message });
+  }
+});
+
 router.get("/latest", protect, async (req: AuthRequest | any, res: Response) => {
   try {
     const userId = req.userId;
