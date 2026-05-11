@@ -10,6 +10,7 @@ import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { useTheme } from "@/hooks/useTheme";
 import { DevMatchLogo } from "@/components/DevMatchLogo";
+import { getPreferences } from "@/hooks/usePreferences";
 
 const STAGE = 220;
 
@@ -148,7 +149,9 @@ export default function Index() {
         ]);
         if (!token) { router.replace("/welcome" as any); return; }
         const lang = await getItem("app_language");
-        router.replace(lang ? "/(tabs)/dashboard" : ("/language" as any));
+        if (!lang) { router.replace("/language" as any); return; }
+        const prefs = await getPreferences();
+        router.replace(prefs.onboardingDone ? "/(tabs)/dashboard" : ("/onboarding" as any));
       } catch {
         router.replace("/welcome" as any);
       }

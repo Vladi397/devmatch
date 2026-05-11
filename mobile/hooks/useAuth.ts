@@ -71,6 +71,7 @@ export function useAuth() {
       if (!res.ok) throw new Error(data.message ?? "Registration failed");
       await saveItem(TOKEN_KEY, data.token);
       await saveItem(USER_KEY, JSON.stringify(data.user));
+      await removeItem("user_preferences");
       router.replace("/language" as any);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong.");
