@@ -332,6 +332,57 @@ router.post("/save-improved", protect, async (req: AuthRequest | any, res: Respo
   }
 });
 
+// Batch score multiple jobs against the resume in one Gemini call
+router.post("/match-batch", protect, async (req: AuthRequest | any, res: Response) => {
+  try {
+    const { jobs } = req.body;
+    if (!Array.isArray(jobs) || jobs.length === 0) {
+      return res.status(400).json({ message: "jobs array is required" });
+    }
+
+    const resume = await prisma.resume.findFirst({
+      where: { userId: req.userId },
+      orderBy: { uploadedAt: "desc" },
+      select: { content: true },
+    });
+
+    if (!resume?.content) {
+      return res.status(404).json({ message: "No resume found" });
+    }
+
+    const batch = (jobs as { id: string; title: string; tags?: string[] }[]).slice(0, 25);
+    const jobLines = batch
+      .map((j, i) => `${i + 1}. [${j.id}] ${j.title}${j.tags?.length ? ` | Skills: ${j.tags.join(", ")}` : ""}`)
+      .join("\n");
+
+    const prompt = `
+You are an expert recruiter. Score how well this candidate's resume fits each job listing (0-100). Only consider the job title and required skills listed — do not invent criteria.
+
+Resume:
+${resume.content}
+
+Jobs:
+${jobLines}
+
+Return ONLY valid JSON using each job's exact ID as the key:
+{
+  "scores": {
+    "<job-id>": <integer 0-100>,
+    "<job-id>": <integer 0-100>
+  }
+}
+
+Scoring guide: 80+ = strong match, 65-79 = good, 40-64 = partial, below 40 = weak. Be realistic and varied.
+    `.trim();
+
+    const data = await runGemini(prompt);
+    res.json({ scores: data.scores ?? {} });
+  } catch (error: any) {
+    console.error("Batch match error:", error);
+    res.status(500).json({ message: "Batch scoring failed", detail: error?.message });
+  }
+});
+
 // Job-specific match score with skill/experience/keyword breakdown
 router.post("/match", protect, async (req: AuthRequest | any, res: Response) => {
   try {

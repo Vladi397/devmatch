@@ -133,11 +133,31 @@ export default function JobsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [prefs, setPrefs] = useState<Preferences>({ roles: [], techStack: [], onboardingDone: false });
+  const [aiScores, setAiScores] = useState<Record<string, number>>({});
+
+  async function fetchAIScores(jobList: Job[]) {
+    if (!jobList.length) return;
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/ats/match-batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          jobs: jobList.slice(0, 25).map((j) => ({ id: j.id, title: j.title, tags: j.tags })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiScores((prev) => ({ ...prev, ...(data.scores ?? {}) }));
+      }
+    } catch {}
+  }
 
   const fetchJobs = useCallback(async (role: number, country: number, nextPage: number, append = false) => {
     try {
       append ? setLoadingMore(true) : setLoading(true);
       setError(null);
+      if (!append) setAiScores({});
       const token = await getToken();
       const q = encodeURIComponent(ROLES[role].query);
       const c = COUNTRIES[country].code;
@@ -150,6 +170,7 @@ export default function JobsScreen() {
       setJobs((prev) => append ? [...prev, ...incoming] : incoming);
       setHasMore(incoming.length >= 10);
       setPage(nextPage);
+      fetchAIScores(incoming);
     } catch (err: any) {
       setError(err.message ?? "Something went wrong");
     } finally {
@@ -298,7 +319,11 @@ export default function JobsScreen() {
                 <AnimatedJobCard
                   key={job.id} job={job} index={i}
                   saved={savedIds.has(job.id)}
-                  matchScore={prefs.techStack.length || prefs.roles.length ? computeMatchScore(job.tags, job.title, prefs) : undefined}
+                  matchScore={
+                    aiScores[job.id] !== undefined
+                      ? aiScores[job.id]
+                      : (prefs.techStack.length || prefs.roles.length ? computeMatchScore(job.tags, job.title, prefs) : undefined)
+                  }
                   onSave={() => handleSave(job)}
                   onUnsave={() => handleUnsave(job)}
                 />
